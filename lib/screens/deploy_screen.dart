@@ -32,7 +32,7 @@ class DeployScreen extends StatelessWidget {
               children: [
                 Container(width: 8, height: 8, decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle)),
                 const SizedBox(width: 8),
-                Text("system: stable", style: GoogleFonts.jetbrainsMono(color: textMuted, fontSize: 12)),
+                Text("system: stable", style: GoogleFonts.jetBrainsMono()(color: textMuted, fontSize: 12)),
               ],
             ),
           )
@@ -56,7 +56,7 @@ class DeployScreen extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(color: accent.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
-                        child: Text("2 FILES", style: GoogleFonts.jetbrainsMono(color: accent, fontSize: 10)),
+                        child: Text("2 FILES", style: GoogleFonts.jetBrainsMono()(color: accent, fontSize: 10)),
                       )
                     ],
                   ),
@@ -75,7 +75,7 @@ class DeployScreen extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(color: surface, borderRadius: BorderRadius.circular(4)),
-                        child: Text("3 FILES", style: GoogleFonts.jetbrainsMono(color: textMuted, fontSize: 10)),
+                        child: Text("3 FILES", style: GoogleFonts.jetBrainsMono()(color: textMuted, fontSize: 10)),
                       )
                     ],
                   ),
@@ -91,7 +91,7 @@ class DeployScreen extends StatelessWidget {
             child: Stack(
               children: [
                 Center(
-                  child: Text("Select a file to view diff", style: GoogleFonts.jetbrainsMono(color: textMuted)),
+                  child: Text("Select a file to view diff", style: GoogleFonts.jetBrainsMono()(color: textMuted)),
                 ),
                 Positioned(
                   top: 20,
@@ -147,8 +147,8 @@ class DeployScreen extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(name, style: GoogleFonts.jetbrainsMono(color: textMain, fontWeight: FontWeight.w500)),
-              Text(path, style: GoogleFonts.jetbrainsMono(color: textMuted, fontSize: 10)),
+              Text(name, style: GoogleFonts.jetBrainsMono()(color: textMain, fontWeight: FontWeight.w500)),
+              Text(path, style: GoogleFonts.jetBrainsMono()(color: textMuted, fontSize: 10)),
             ],
           )
         ],

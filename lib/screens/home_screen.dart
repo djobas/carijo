@@ -72,7 +72,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       children: [
                         const Icon(Icons.search, color: textMuted, size: 18),
                         const SizedBox(width: 8),
-                        Text("Search notes...", style: GoogleFonts.jetbrainsMono(color: textMuted)),
+                        Text("Search notes...", style: GoogleFonts.jetBrainsMono()(color: textMuted)),
                       ],
                     ),
                   ),
@@ -114,7 +114,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   Text(note.title, 
                                     maxLines: 1, 
                                     overflow: TextOverflow.ellipsis,
-                                    style: GoogleFonts.jetbrainsMono(
+                                    style: GoogleFonts.jetBrainsMono()(
                                       color: textMain, 
                                       fontWeight: isSelected ? FontWeight.bold : FontWeight.normal
                                     )
@@ -123,7 +123,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   Text(note.content,
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
-                                    style: GoogleFonts.jetbrainsMono(color: textMuted, fontSize: 12),
+                                    style: GoogleFonts.jetBrainsMono()(color: textMuted, fontSize: 12),
                                   ),
                                 ],
                               ),
@@ -147,7 +147,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           children: [
                             const Icon(Icons.settings, color: textMuted, size: 16),
                             const SizedBox(width: 8),
-                            Text("Settings", style: GoogleFonts.jetbrainsMono(color: textMuted, fontSize: 12)),
+                            Text("Settings", style: GoogleFonts.jetBrainsMono()(color: textMuted, fontSize: 12)),
                           ],
                         ),
                       ),
@@ -163,7 +163,7 @@ class _HomeScreenState extends State<HomeScreen> {
             child: Consumer<NoteService>(
               builder: (context, noteService, _) {
                 if (noteService.selectedNote == null) {
-                  return Center(child: Text("Select a note", style: GoogleFonts.jetbrainsMono(color: textMuted)));
+                  return Center(child: Text("Select a note", style: GoogleFonts.jetBrainsMono()(color: textMuted)));
                 }
 
                 return Column(
@@ -175,7 +175,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                           Text("Mode: ${_isEditing ? 'EDIT' : 'PREVIEW'}", style: GoogleFonts.jetbrainsMono(color: textMuted, fontSize: 10)),
+                           Text("Mode: ${_isEditing ? 'EDIT' : 'PREVIEW'}", style: GoogleFonts.jetBrainsMono()(color: textMuted, fontSize: 10)),
                            const SizedBox(width: 12),
                            Switch(
                              value: !_isEditing, 
@@ -196,7 +196,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             controller: _editorController,
                             maxLines: null,
                             expands: true,
-                            style: GoogleFonts.jetbrainsMono(color: textMain, fontSize: 16, height: 1.6),
+                            style: GoogleFonts.jetBrainsMono()(color: textMain, fontSize: 16, height: 1.6),
                             cursorColor: accent,
                             decoration: const InputDecoration(border: InputBorder.none),
                           ),
@@ -216,7 +216,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             p: GoogleFonts.spaceGrotesk(color: textMain.withOpacity(0.9), fontSize: 16, height: 1.6),
                             h1: GoogleFonts.spaceGrotesk(color: textMain, fontSize: 32, fontWeight: FontWeight.bold),
                             h2: GoogleFonts.spaceGrotesk(color: textMain, fontSize: 24, fontWeight: FontWeight.bold),
-                            code: GoogleFonts.jetbrainsMono(backgroundColor: const Color(0xFF242424), color: accent),
+                            code: GoogleFonts.jetBrainsMono()(backgroundColor: const Color(0xFF242424), color: accent),
                             codeblockDecoration: BoxDecoration(color: const Color(0xFF111111), borderRadius: BorderRadius.circular(4)),
                           ),
                         ),
@@ -228,13 +228,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                          Text("${_editorController.text.split(' ').length} words", style: GoogleFonts.jetbrainsMono(color: textMuted, fontSize: 12)),
+                          Text("${_editorController.text.split(' ').length} words", style: GoogleFonts.jetBrainsMono()(color: textMuted, fontSize: 12)),
                           const SizedBox(width: 8),
                           Container(width: 1, height: 12, color: borderColor),
                           const SizedBox(width: 8),
                           const Icon(Icons.circle, size: 8, color: accent),
                           const SizedBox(width: 4),
-                          Text("Saved", style: GoogleFonts.jetbrainsMono(color: textMain, fontSize: 12)),
+                          Text("Saved", style: GoogleFonts.jetBrainsMono()(color: textMain, fontSize: 12)),
                         ],
                       ),
                     )

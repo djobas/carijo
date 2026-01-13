@@ -113,7 +113,7 @@ class _CommandPaletteState extends State<CommandPalette> {
               // Search Input
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                border: const Border(bottom: BorderSide(color: borderColor)),
+                decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: borderColor))),
                 child: Row(
                   children: [
                     const Icon(Icons.search, color: textMuted),
@@ -142,11 +142,11 @@ class _CommandPaletteState extends State<CommandPalette> {
                           controller: _searchController,
                           focusNode: _focusNode,
                           autofocus: true,
-                          style: GoogleFonts.jetbrainsMono(color: textMain, fontSize: 18),
+                          style: GoogleFonts.jetBrainsMono()(color: textMain, fontSize: 18),
                           cursorColor: accent,
                           decoration: InputDecoration.collapsed(
                             hintText: "Type a command or search...",
-                            hintStyle: GoogleFonts.jetbrainsMono(color: textMuted),
+                            hintStyle: GoogleFonts.jetBrainsMono()(color: textMuted),
                           ),
                           onChanged: _loadOptions,
                         ),
@@ -161,7 +161,7 @@ class _CommandPaletteState extends State<CommandPalette> {
                       ),
                       child: Text(
                         "ESC",
-                        style: GoogleFonts.jetbrainsMono(color: textMuted, fontSize: 10),
+                        style: GoogleFonts.jetBrainsMono()(color: textMuted, fontSize: 10),
                       ),
                     )
                   ],
@@ -213,7 +213,7 @@ class _CommandPaletteState extends State<CommandPalette> {
                             Expanded(
                               child: Text(
                                 title,
-                                style: GoogleFonts.jetbrainsMono(
+                                style: GoogleFonts.jetBrainsMono()(
                                   color: isSelected ? textMain : textMain,
                                   fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
                                 ),
@@ -222,7 +222,7 @@ class _CommandPaletteState extends State<CommandPalette> {
                             if (isSelected)
                               const Icon(Icons.keyboard_return, color: textMain, size: 16)
                             else 
-                              Text(subtitle, style: GoogleFonts.jetbrainsMono(color: textMuted, fontSize: 10)),
+                              Text(subtitle, style: GoogleFonts.jetBrainsMono()(color: textMuted, fontSize: 10)),
                           ],
                         ),
                       ),

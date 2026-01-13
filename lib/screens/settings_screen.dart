@@ -65,7 +65,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
               TextField(
                 controller: _pathController,
-                style: GoogleFonts.jetbrainsMono(color: textMain),
+                style: GoogleFonts.jetBrainsMono()(color: textMain),
                 decoration: InputDecoration(
                   enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: borderGray)),
                   focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: accent)),
