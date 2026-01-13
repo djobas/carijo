@@ -203,22 +203,29 @@ class _HomeScreenState extends State<HomeScreen> {
                       )
                       : SingleChildScrollView(
                         padding: const EdgeInsets.all(32),
-                        child: MarkdownBody(
-                          data: _editorController.text,
-                          onTapLink: (text, href, title) {
-                            if (href != null) {
-                              _navigateToNote(href);
-                            } else {
-                              _navigateToNote(text);
-                            }
-                          },
-                          styleSheet: MarkdownStyleSheet(
-                            p: GoogleFonts.spaceGrotesk(color: textMain.withOpacity(0.9), fontSize: 16, height: 1.6),
-                            h1: GoogleFonts.spaceGrotesk(color: textMain, fontSize: 32, fontWeight: FontWeight.bold),
-                            h2: GoogleFonts.spaceGrotesk(color: textMain, fontSize: 24, fontWeight: FontWeight.bold),
-                            code: GoogleFonts.jetBrainsMono(backgroundColor: const Color(0xFF242424), color: accent),
-                            codeblockDecoration: BoxDecoration(color: const Color(0xFF111111), borderRadius: BorderRadius.circular(4)),
-                          ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            MarkdownBody(
+                              data: _editorController.text,
+                              onTapLink: (text, href, title) {
+                                if (href != null) {
+                                  _navigateToNote(href);
+                                } else {
+                                  _navigateToNote(text);
+                                }
+                              },
+                              styleSheet: MarkdownStyleSheet(
+                                p: GoogleFonts.spaceGrotesk(color: textMain.withOpacity(0.9), fontSize: 16, height: 1.6),
+                                h1: GoogleFonts.spaceGrotesk(color: textMain, fontSize: 32, fontWeight: FontWeight.bold),
+                                h2: GoogleFonts.spaceGrotesk(color: textMain, fontSize: 24, fontWeight: FontWeight.bold),
+                                code: GoogleFonts.jetBrainsMono(backgroundColor: const Color(0xFF242424), color: accent),
+                                codeblockDecoration: BoxDecoration(color: const Color(0xFF111111), borderRadius: BorderRadius.circular(4)),
+                              ),
+                            ),
+                            const SizedBox(height: 64),
+                            _buildBacklinksSection(context, noteService),
+                          ],
                         ),
                       ),
                     ),
@@ -245,6 +252,49 @@ class _HomeScreenState extends State<HomeScreen> {
           )
         ],
       ),
+    );
+  }
+
+  Widget _buildBacklinksSection(BuildContext context, NoteService noteService) {
+    if (noteService.selectedNote == null) return const SizedBox();
+    
+    final backlinks = noteService.getBacklinksFor(noteService.selectedNote!);
+    if (backlinks.isEmpty) return const SizedBox();
+
+    const textMuted = Color(0xFF8C8C8C);
+    const accent = Color(0xFFD93025);
+    const textMain = Color(0xFFF4F1EA);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.link, color: accent, size: 16),
+            const SizedBox(width: 8),
+            Text("LINKED MENTIONS", style: GoogleFonts.spaceGrotesk(color: textMuted, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+          ],
+        ),
+        const SizedBox(height: 16),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: backlinks.map((note) => InkWell(
+            onTap: () {
+              noteService.selectNote(note);
+              _editorController.text = note.content;
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                border: Border.all(color: const Color(0xFF2A2A2A)),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(note.title, style: GoogleFonts.jetBrainsMono(color: textMain, fontSize: 12)),
+            ),
+          )).toList(),
+        ),
+      ],
     );
   }
 

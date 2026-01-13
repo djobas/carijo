@@ -24,11 +24,13 @@ class NoteService extends ChangeNotifier {
   List<Note> _notes = [];
   Note? _selectedNote;
   bool _isLoading = true;
+  Map<String, List<Note>> _backlinks = {};
 
   String? get notesPath => _notesPath;
   List<Note> get notes => _notes;
   Note? get selectedNote => _selectedNote;
   bool get isLoading => _isLoading;
+  Map<String, List<Note>> get backlinks => _backlinks;
 
   NoteService() {
     _init();
@@ -83,6 +85,9 @@ class NoteService extends ChangeNotifier {
         // Sort by newest
         loadedNotes.sort((a, b) => b.modified.compareTo(a.modified));
         _notes = loadedNotes;
+        
+        // Build Backlinks
+        _buildBacklinks();
       }
     } catch (e) {
       print("Error loading notes: $e");
@@ -90,6 +95,47 @@ class NoteService extends ChangeNotifier {
 
     _isLoading = false;
     notifyListeners();
+  }
+
+  void _buildBacklinks() {
+    _backlinks = {};
+    final linkRegex = RegExp(r'\[\[(.*?)\]\]');
+
+    for (var note in _notes) {
+      final matches = linkRegex.allMatches(note.content);
+      for (var match in matches) {
+        final targetTitle = match.group(1)!.trim();
+        if (!_backlinks.containsKey(targetTitle)) {
+          _backlinks[targetTitle] = [];
+        }
+        // Avoid duplicates in backlinks (if Note A links to Note B twice)
+        if (!_backlinks[targetTitle]!.any((n) => n.path == note.path)) {
+          _backlinks[targetTitle]!.add(note);
+        }
+      }
+    }
+  }
+
+  List<Note> getBacklinksFor(Note note) {
+    // Check by title and by filename (without .md)
+    final filename = note.path.split(Platform.pathSeparator).last.replaceAll('.md', '');
+    final linksById = _backlinks[note.title] ?? [];
+    final linksByFile = _backlinks[filename] ?? [];
+    
+    // Combine and unique
+    final allLinks = [...linksById, ...linksByFile];
+    final seenPaths = <String>{};
+    return allLinks.where((n) => seenPaths.add(n.path)).toList();
+  }
+
+  List<Note> searchNotes(String query) {
+    if (query.isEmpty) return [];
+    
+    return _notes.where((note) {
+      final inTitle = note.title.toLowerCase().contains(query.toLowerCase());
+      final inContent = note.content.toLowerCase().contains(query.toLowerCase());
+      return inTitle || inContent;
+    }).toList();
   }
 
   void selectNote(Note note) {

@@ -28,7 +28,6 @@ class _CommandPaletteState extends State<CommandPalette> {
 
   void _loadOptions(String query) {
     final noteService = Provider.of<NoteService>(context, listen: false);
-    final notes = noteService.notes;
     
     final commands = [
       {'title': 'Go to Settings', 'action': 'settings', 'icon': Icons.settings},
@@ -45,12 +44,9 @@ class _CommandPaletteState extends State<CommandPalette> {
       }
     }
 
-    // Filter Notes
-    for (var note in notes) {
-      if (note.title.toLowerCase().contains(query.toLowerCase())) {
-        results.add(note);
-      }
-    }
+    // Use the new searchNotes method for content-aware searching
+    final matchingNotes = noteService.searchNotes(query);
+    results.addAll(matchingNotes);
 
     setState(() {
       _options = results;
