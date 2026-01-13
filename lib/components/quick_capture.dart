@@ -70,7 +70,7 @@ class _QuickCaptureDialogState extends State<QuickCaptureDialog> {
                     const SizedBox(width: 12),
                     Text(
                       "Quick Capture",
-                      style: GoogleFonts.jetBrainsMono()(
+                      style: GoogleFonts.jetBrainsMono(
                         color: textMuted,
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
@@ -87,7 +87,7 @@ class _QuickCaptureDialogState extends State<QuickCaptureDialog> {
                       ),
                       child: Text(
                         "ENTER TO SAVE",
-                        style: GoogleFonts.jetBrainsMono()(
+                        style: GoogleFonts.jetBrainsMono(
                           color: accent,
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
@@ -115,11 +115,11 @@ class _QuickCaptureDialogState extends State<QuickCaptureDialog> {
                   autofocus: true,
                   maxLines: 6,
                   minLines: 3,
-                  style: GoogleFonts.jetBrainsMono()(color: textMain, fontSize: 16),
+                  style: GoogleFonts.jetBrainsMono(color: textMain, fontSize: 16),
                   cursorColor: accent,
                   decoration: InputDecoration(
                     hintText: "Type your thought...",
-                    hintStyle: GoogleFonts.jetBrainsMono()(color: textMuted.withOpacity(0.5)),
+                    hintStyle: GoogleFonts.jetBrainsMono(color: textMuted.withOpacity(0.5)),
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.all(24),
                   ),
@@ -138,7 +138,7 @@ class _QuickCaptureDialogState extends State<QuickCaptureDialog> {
                      const SizedBox(width: 8),
                      Text(
                        "Markdown supported",
-                       style: GoogleFonts.jetBrainsMono()(color: textMuted, fontSize: 10),
+                       style: GoogleFonts.jetBrainsMono(color: textMuted, fontSize: 10),
                      ),
                   ],
                 ),
