@@ -1,14 +1,22 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:yaml/yaml.dart';
 
 class Note {
   final String title;
   final String content;
   final String path;
   final DateTime modified;
+  final Map<String, dynamic> metadata;
 
-  Note({required this.title, required this.content, required this.path, required this.modified});
+  Note({
+    required this.title, 
+    required this.content, 
+    required this.path, 
+    required this.modified,
+    this.metadata = const {},
+  });
 }
 
 class NoteService extends ChangeNotifier {
@@ -59,14 +67,16 @@ class NoteService extends ChangeNotifier {
           if (entity is File && entity.path.endsWith('.md')) {
             final content = await entity.readAsString();
             final stat = await entity.stat();
-            // Simple title extraction: filename or first line #
-            final filename = entity.uri.pathSegments.last;
+            
+            // Extract Frontmatter and Title
+            final noteData = _parseNoteContent(content, entity.uri.pathSegments.last);
             
             loadedNotes.add(Note(
-              title: filename, 
+              title: noteData['title'], 
               content: content, 
               path: entity.path,
               modified: stat.modified,
+              metadata: noteData['metadata'],
             ));
           }
         }
@@ -114,10 +124,45 @@ class NoteService extends ChangeNotifier {
         title: _notes[index].title,
         content: newContent,
         path: _notes[index].path,
-        modified: DateTime.now()
+        modified: DateTime.now(),
+        metadata: _notes[index].metadata,
       );
       _selectedNote = _notes[index];
       notifyListeners();
     }
+  }
+
+  Map<String, dynamic> _parseNoteContent(String content, String filename) {
+    String title = filename;
+    Map<String, dynamic> metadata = {};
+
+    // 1. Try Frontmatter
+    final RegExp frontmatterRegex = RegExp(r'^---\s*\n([\s\S]*?)\n---\s*\n');
+    final match = frontmatterRegex.firstMatch(content);
+
+    if (match != null) {
+      try {
+        final yamlStr = match.group(1);
+        final yaml = loadYaml(yamlStr!);
+        if (yaml is Map) {
+          metadata = Map<String, dynamic>.from(yaml);
+          if (metadata.containsKey('title')) {
+            title = metadata['title'].toString();
+            return {'title': title, 'metadata': metadata};
+          }
+        }
+      } catch (e) {
+        print("Error parsing frontmatter: $e");
+      }
+    }
+
+    // 2. Try H1
+    final RegExp h1Regex = RegExp(r'^#\s+(.*)$', multiLine: true);
+    final h1Match = h1Regex.firstMatch(content);
+    if (h1Match != null) {
+      title = h1Match.group(1)!.trim();
+    }
+
+    return {'title': title, 'metadata': metadata};
   }
 }

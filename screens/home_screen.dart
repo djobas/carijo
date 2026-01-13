@@ -205,6 +205,13 @@ class _HomeScreenState extends State<HomeScreen> {
                         padding: const EdgeInsets.all(32),
                         child: MarkdownBody(
                           data: _editorController.text,
+                          onTapLink: (text, href, title) {
+                            if (href != null) {
+                              _navigateToNote(href);
+                            } else {
+                              _navigateToNote(text);
+                            }
+                          },
                           styleSheet: MarkdownStyleSheet(
                             p: GoogleFonts.spaceGrotesk(color: textMain.withOpacity(0.9), fontSize: 16, height: 1.6),
                             h1: GoogleFonts.spaceGrotesk(color: textMain, fontSize: 32, fontWeight: FontWeight.bold),
@@ -239,5 +246,23 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+  }
+
+  void _navigateToNote(String titleOrPath) {
+    final noteService = Provider.of<NoteService>(context, listen: false);
+    
+    // Try by title first
+    try {
+      final note = noteService.notes.firstWhere(
+        (n) => n.title.toLowerCase() == titleOrPath.toLowerCase() || 
+               n.path.endsWith(titleOrPath)
+      );
+      noteService.selectNote(note);
+      _editorController.text = note.content;
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Note not found: $titleOrPath"))
+      );
+    }
   }
 }
