@@ -143,6 +143,31 @@ class NoteService extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> createNewNote() async {
+    if (_notesPath == null) return;
+    
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final filename = "Untitled $timestamp.md";
+    final defaultContent = "# New Note\n\nStart writing here...";
+    
+    await saveNote(filename, defaultContent);
+  }
+
+  Future<void> deleteNote(Note note) async {
+    try {
+      final file = File(note.path);
+      if (await file.exists()) {
+        await file.delete();
+        if (_selectedNote?.path == note.path) {
+          _selectedNote = null;
+        }
+        await refreshNotes();
+      }
+    } catch (e) {
+      print("Error deleting note: $e");
+    }
+  }
+
   Future<void> saveNote(String filename, String content) async {
     if (_notesPath == null) return;
     

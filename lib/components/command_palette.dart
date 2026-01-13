@@ -69,11 +69,7 @@ class _CommandPaletteState extends State<CommandPalette> {
       } else if (action == 'deploy') {
          Navigator.push(context, MaterialPageRoute(builder: (_) => const DeployScreen()));
       } else if (action == 'new_note') {
-        // Simple logic: create generic note
-        Provider.of<NoteService>(context, listen: false).saveNote(
-          "Untitled ${DateTime.now().millisecondsSinceEpoch}.md", 
-          "# New Note\n"
-        );
+        Provider.of<NoteService>(context, listen: false).createNewNote();
       }
     } else if (selection is Note) {
       // It's a note

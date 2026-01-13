@@ -59,6 +59,14 @@ class _HomeScreenState extends State<HomeScreen> {
                       const Icon(Icons.grid_view, color: accent),
                       const SizedBox(width: 8),
                       Text("Inbox", style: GoogleFonts.spaceGrotesk(color: textMain, fontSize: 20, fontWeight: FontWeight.bold)),
+                      const Spacer(),
+                      Consumer<NoteService>(
+                        builder: (context, noteService, _) => IconButton(
+                          onPressed: () => noteService.createNewNote(), 
+                          icon: const Icon(Icons.add, color: textMuted, size: 20),
+                          tooltip: "New Note (Ctrl+N)",
+                        ),
+                      )
                     ],
                   ),
                 ),
@@ -173,18 +181,42 @@ class _HomeScreenState extends State<HomeScreen> {
                       height: 56,
                       padding: const EdgeInsets.symmetric(horizontal: 24),
                       child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                           Text("Mode: ${_isEditing ? 'EDIT' : 'PREVIEW'}", style: GoogleFonts.jetBrainsMono(color: textMuted, fontSize: 10)),
-                           const SizedBox(width: 12),
-                           Switch(
-                             value: !_isEditing, 
-                             onChanged: (val) => setState(() => _isEditing = !val),
-                             activeColor: accent,
-                             activeTrackColor: accent.withOpacity(0.3),
-                             inactiveThumbColor: textMuted,
-                             inactiveTrackColor: borderColor,
-                           )
+                          IconButton(
+                            onPressed: () {
+                              showDialog(
+                                context: context,
+                                builder: (ctx) => AlertDialog(
+                                  backgroundColor: const Color(0xFF1A1A1A),
+                                  title: Text("Delete Note?", style: GoogleFonts.spaceGrotesk(color: textMain)),
+                                  content: Text("This action cannot be undone.", style: GoogleFonts.jetBrainsMono(color: textMuted)),
+                                  actions: [
+                                    TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("CANCEL", style: TextStyle(color: textMuted))),
+                                    TextButton(
+                                      onPressed: () {
+                                        Provider.of<NoteService>(context, listen: false).deleteNote(noteService.selectedNote!);
+                                        Navigator.pop(ctx);
+                                      }, 
+                                      child: const Text("DELETE", style: TextStyle(color: accent))
+                                    ),
+                                  ],
+                                )
+                              );
+                            }, 
+                            icon: const Icon(Icons.delete_outline, color: textMuted, size: 20),
+                            tooltip: "Delete Note",
+                          ),
+                          const Spacer(),
+                          Text("Mode: ${_isEditing ? 'EDIT' : 'PREVIEW'}", style: GoogleFonts.jetBrainsMono(color: textMuted, fontSize: 10)),
+                          const SizedBox(width: 12),
+                          Switch(
+                            value: !_isEditing, 
+                            onChanged: (val) => setState(() => _isEditing = !val),
+                            activeColor: accent,
+                            activeTrackColor: accent.withOpacity(0.3),
+                            inactiveThumbColor: textMuted,
+                            inactiveTrackColor: borderColor,
+                          )
                         ],
                       ),
                     ),
