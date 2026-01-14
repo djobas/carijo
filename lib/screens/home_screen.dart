@@ -24,6 +24,8 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _editorController = TextEditingController();
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
+  final TextEditingController _tagsController = TextEditingController();
+  bool _isPublished = false;
   bool _isEditing = true;
   String? _lastSelectedPath;
   bool _showProperties = false;
@@ -92,12 +94,16 @@ class _HomeScreenState extends State<HomeScreen> {
       _editorController.removeListener(_onEditorChanged);
       _editorController.text = selectedNote.content;
       _titleController.text = selectedNote.title;
+      _tagsController.text = selectedNote.tags.join(', ');
+      _isPublished = selectedNote.isPublished;
       _lastSelectedPath = selectedNote.path;
       _editorController.addListener(_onEditorChanged);
     } else if (selectedNote == null) {
       _lastSelectedPath = null;
       _editorController.clear();
       _titleController.clear();
+      _tagsController.clear();
+      _isPublished = false;
     }
   }
 
@@ -563,28 +569,32 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 24),
                 Text("TAGS", style: GoogleFonts.spaceGrotesk(color: textMuted, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
                 const SizedBox(height: 8),
-                if (note.tags.isEmpty)
-                   Text("No tags found", style: GoogleFonts.jetBrainsMono(color: textMuted, fontSize: 12, fontStyle: FontStyle.italic))
-                else
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: note.tags.map((tag) => InkWell(
-                      onTap: () {
-                        noteService.toggleTagFilter(tag);
-                        setState(() => _showProperties = false); // Close properties to show filtered list
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: noteService.filterTag == tag ? accent.withOpacity(0.2) : const Color(0xFF242424),
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: noteService.filterTag == tag ? accent : borderColor),
-                        ),
-                        child: Text("#$tag", style: GoogleFonts.jetBrainsMono(color: textMain, fontSize: 11)),
-                      ),
-                    )).toList(),
+                TextField(
+                  controller: _tagsController,
+                  style: GoogleFonts.jetBrainsMono(color: textMain, fontSize: 13),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    hintText: "tag1, tag2",
+                    hintStyle: TextStyle(color: textMuted.withOpacity(0.5)),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                    enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: borderColor)),
+                    focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: accent)),
                   ),
+                ),
+                const SizedBox(height: 24),
+                
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text("PUBLISHED TO BLOG", style: GoogleFonts.spaceGrotesk(color: textMuted, fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+                    Switch(
+                      value: _isPublished,
+                      onChanged: (val) => setState(() => _isPublished = val),
+                      activeColor: const Color(0xFF3ECF8E), // Supabase green
+                      activeTrackColor: const Color(0xFF3ECF8E).withOpacity(0.2),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 32),
                 ElevatedButton(
                   onPressed: () => _updateNoteMetadata(noteService),
@@ -917,34 +927,59 @@ class _HomeScreenState extends State<HomeScreen> {
   void _updateNoteMetadata(NoteService noteService) {
     if (noteService.selectedNote == null) return;
     
-    final note = noteService.selectedNote!;
     final newTitle = _titleController.text;
+    final tagsList = _tagsController.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
+    final published = _isPublished;
+    
     String content = _editorController.text;
 
-    // 1. Update Title in Content
+    // 1. Update or Create Frontmatter
     final RegExp frontmatterRegex = RegExp(r'^---\s*\n([\s\S]*?)\n---\s*\n');
     final match = frontmatterRegex.firstMatch(content);
 
+    // Prepare tags string for YAML
+    String tagsYaml = tagsList.isEmpty ? '[]' : '[${tagsList.join(', ')}]';
+
     if (match != null) {
-      // Update YAML
+      // We have existing frontmatter, replace specific keys or rebuild
       String yaml = match.group(1)!;
-      if (yaml.contains('title:')) {
-        yaml = yaml.replaceFirst(RegExp(r'title:.*'), 'title: $newTitle');
+      
+      // Title
+      if (yaml.contains(RegExp(r'^title:', multiLine: true))) {
+        yaml = yaml.replaceFirst(RegExp(r'^title:.*', multiLine: true), 'title: $newTitle');
       } else {
         yaml = 'title: $newTitle\n$yaml';
       }
+      
+      // Tags
+      if (yaml.contains(RegExp(r'^tags:', multiLine: true))) {
+        yaml = yaml.replaceFirst(RegExp(r'^tags:.*', multiLine: true), 'tags: $tagsYaml');
+      } else {
+        yaml = 'tags: $tagsYaml\n$yaml';
+      }
+      
+      // Published
+      if (yaml.contains(RegExp(r'^published:', multiLine: true))) {
+        yaml = yaml.replaceFirst(RegExp(r'^published:.*', multiLine: true), 'published: $published');
+      } else {
+        yaml = 'published: $published\n$yaml';
+      }
+      
       content = content.replaceRange(match.start, match.end, '---\n$yaml\n---\n');
     } else {
-      // Update H1
-      final RegExp h1Regex = RegExp(r'^#\s+(.*)$', multiLine: true);
+      // No frontmatter, create it
+      final String newFrontmatter = '---\ntitle: $newTitle\ntags: $tagsYaml\npublished: $published\n---\n\n';
+      
+      // Remove existing H1 if it was the source of the title
+      final RegExp h1Regex = RegExp(r'^#\s+.*$', multiLine: true);
       if (h1Regex.hasMatch(content)) {
-        content = content.replaceFirst(h1Regex, '# $newTitle');
-      } else {
-        content = '# $newTitle\n\n$content';
+        content = content.replaceFirst(h1Regex, '').trimLeft();
       }
+      
+      content = newFrontmatter + content;
     }
 
-    // 2. Save
+    // 2. Save and Refresh UI
     _editorController.text = content;
     noteService.manualSaveCurrentNote(content);
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Metadata updated")));
