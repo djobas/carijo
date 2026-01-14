@@ -174,14 +174,24 @@ class NoteService extends ChangeNotifier {
     // Ensure .md extension
     if (!filename.endsWith('.md')) filename += '.md';
     
-    final path = '$_notesPath${Platform.pathSeparator}$filename';
+    // Normalize path to avoid double separators or slash mismatches
+    final dir = Directory(_notesPath!);
+    final path = File('${dir.path}${Platform.pathSeparator}$filename').path;
+    
     final file = File(path);
     await file.writeAsString(content);
     await refreshNotes();
     
     // Select the newly created note
-    final newNote = _notes.firstWhere((n) => n.path == path, orElse: () => _notes.first);
-    selectNote(newNote);
+    try {
+      final newNote = _notes.firstWhere(
+        (n) => File(n.path).path == path, 
+        orElse: () => _notes.isNotEmpty ? _notes.first : throw Exception("No notes found after saving")
+      );
+      selectNote(newNote);
+    } catch (e) {
+      print("Warning: Could not auto-select new note: $e");
+    }
   }
 
   Future<void> updateCurrentNote(String newContent) async {

@@ -15,18 +15,34 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _editorController = TextEditingController();
   bool _isEditing = true;
+  String? _lastSelectedPath;
 
   @override
   void initState() {
     super.initState();
-    _editorController.addListener(() {
-      final noteService = Provider.of<NoteService>(context, listen: false);
-      if (noteService.selectedNote != null && 
-          _editorController.text != noteService.selectedNote!.content) {
-        // Simple debounce could go here
-        noteService.updateCurrentNote(_editorController.text);
-      }
-    });
+    _editorController.addListener(_onEditorChanged);
+  }
+
+  void _onEditorChanged() {
+    final noteService = Provider.of<NoteService>(context, listen: false);
+    if (noteService.selectedNote != null && 
+        _editorController.text != noteService.selectedNote!.content) {
+      noteService.updateCurrentNote(_editorController.text);
+    }
+  }
+
+  void _syncEditorWithSelection(NoteService noteService) {
+    final selectedNote = noteService.selectedNote;
+    if (selectedNote != null && selectedNote.path != _lastSelectedPath) {
+      // Avoid triggering the listener while we programmatically update the text
+      _editorController.removeListener(_onEditorChanged);
+      _editorController.text = selectedNote.content;
+      _lastSelectedPath = selectedNote.path;
+      _editorController.addListener(_onEditorChanged);
+    } else if (selectedNote == null) {
+      _lastSelectedPath = null;
+      _editorController.clear();
+    }
   }
 
   @override
@@ -37,6 +53,9 @@ class _HomeScreenState extends State<HomeScreen> {
     const textMain = Color(0xFFF4F1EA);
     const textMuted = Color(0xFF8C8C8C);
     const accent = Color(0xFFD93025);
+
+    final noteService = Provider.of<NoteService>(context);
+    _syncEditorWithSelection(noteService);
 
     return Scaffold(
       backgroundColor: bgDark,
@@ -333,15 +352,23 @@ class _HomeScreenState extends State<HomeScreen> {
   void _navigateToNote(String titleOrPath) {
     final noteService = Provider.of<NoteService>(context, listen: false);
     
-    // Try by title first
+    // Try by title or path
+    Note? note;
     try {
-      final note = noteService.notes.firstWhere(
+      note = noteService.notes.firstWhere(
         (n) => n.title.toLowerCase() == titleOrPath.toLowerCase() || 
-               n.path.endsWith(titleOrPath)
+               n.path.endsWith(titleOrPath) ||
+               n.path.replaceAll('.md', '').endsWith(titleOrPath),
+        orElse: () => throw Exception("Not found"),
       );
+    } catch (_) {
+      note = null;
+    }
+
+    if (note != null) {
       noteService.selectNote(note);
       _editorController.text = note.content;
-    } catch (e) {
+    } else {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Note not found: $titleOrPath"))
       );
