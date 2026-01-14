@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -59,7 +60,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return CallbackShortcuts(
       bindings: {
-        const SingleActivator(LogicalKeyboardKey.keyS, control: true): () {
+        SingleActivator(LogicalKeyboardKey.keyS, control: true): () {
           noteService.manualSaveCurrentNote(_editorController.text);
         },
       },
@@ -72,7 +73,7 @@ class _HomeScreenState extends State<HomeScreen> {
               // ... (Sidebar code)
               Container(
                 width: 280,
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   color: bgSidebar,
                   border: Border(right: BorderSide(color: borderColor)),
                 ),
@@ -282,40 +283,40 @@ class _HomeScreenState extends State<HomeScreen> {
                                     codeblockDecoration: BoxDecoration(color: const Color(0xFF111111), borderRadius: BorderRadius.circular(4)),
                                   ),
                                 ),
-                                const SizedBox(height: 64),
-                                _buildBacklinksSection(context, noteService),
-                              ],
-                            ),
-                          ),
+                            const SizedBox(height: 64),
+                            _buildBacklinksSection(context, noteService),
+                          ],
                         ),
-                        // Status Bar
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              Text("${_editorController.text.split(' ').length} words", style: GoogleFonts.jetBrainsMono(color: textMuted, fontSize: 12)),
-                              const SizedBox(width: 8),
-                              Container(width: 1, height: 12, color: borderColor),
-                              const SizedBox(width: 8),
-                              Icon(Icons.circle, size: 8, color: isAutoSave ? accent : textMuted),
-                              const SizedBox(width: 4),
-                              Text(
-                                isAutoSave ? "Autosave ON" : "CTRL+S to Save", 
-                                style: GoogleFonts.jetBrainsMono(
-                                  color: isAutoSave ? textMain : textMuted, 
-                                  fontSize: 12,
-                                  fontWeight: isAutoSave ? FontWeight.normal : FontWeight.bold
-                                )
-                              ),
-                            ],
+                      ),
+                    ),
+                    // Status Bar
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Text("${_editorController.text.split(' ').length} words", style: GoogleFonts.jetBrainsMono(color: textMuted, fontSize: 12)),
+                          const SizedBox(width: 8),
+                          Container(width: 1, height: 12, color: borderColor),
+                          const SizedBox(width: 8),
+                          Icon(Icons.circle, size: 8, color: isAutoSave ? accent : textMuted),
+                          const SizedBox(width: 4),
+                          Text(
+                            isAutoSave ? "Autosave ON" : "CTRL+S to Save", 
+                            style: GoogleFonts.jetBrainsMono(
+                              color: isAutoSave ? textMain : textMuted, 
+                              fontSize: 12,
+                              fontWeight: isAutoSave ? FontWeight.normal : FontWeight.bold
+                            )
                           ),
-                        )
-                      ],
-                    );
-                  },
-                ),
-              )
+                        ],
+                      ),
+                    )
+                  ],
+                );
+              },
+            ),
+          )
             ],
           ),
         ),

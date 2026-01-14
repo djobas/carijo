@@ -63,7 +63,7 @@ class CarijoApp extends StatelessWidget {
           ),
         );
       },
-      home: const HomeScreen(),
+      home: HomeScreen(),
     );
   }
 }
