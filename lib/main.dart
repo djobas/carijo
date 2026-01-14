@@ -1,18 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'services/note_service.dart';
+import 'services/supabase_service.dart';
 import 'services/git_service.dart';
 import 'screens/home_screen.dart';
+import 'screens/settings_screen.dart';
 import 'components/quick_capture.dart';
 import 'widgets/command_palette.dart';
+import 'services/note_service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  final supabaseService = SupabaseService();
+  await supabaseService.initialize();
+
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => NoteService()),
         ChangeNotifierProvider(create: (_) => GitService()),
+        ChangeNotifierProvider.value(value: supabaseService),
       ],
       child: const CarijoApp(),
     ),

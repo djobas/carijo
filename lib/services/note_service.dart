@@ -12,6 +12,7 @@ class Note {
   final Map<String, dynamic> metadata;
   final List<String> tags;
   final List<String> outgoingLinks;
+  final bool isPublished;
 
   Note({
     required this.title, 
@@ -21,6 +22,7 @@ class Note {
     this.metadata = const {},
     this.tags = const [],
     this.outgoingLinks = const [],
+    this.isPublished = false,
   });
 }
 
@@ -443,6 +445,7 @@ class NoteService extends ChangeNotifier {
           metadata: noteData['metadata'],
           tags: noteData['tags'],
           outgoingLinks: noteData['outgoingLinks'],
+          isPublished: noteData['isPublished'] ?? false,
         ));
       }
     }
@@ -514,6 +517,7 @@ class NoteService extends ChangeNotifier {
         metadata: noteData['metadata'],
         tags: noteData['tags'],
         outgoingLinks: noteData['outgoingLinks'],
+        isPublished: noteData['isPublished'] ?? false,
       );
       _selectedNote = _notes[index];
       _buildTags(); // Update global tags map
@@ -599,6 +603,7 @@ class NoteService extends ChangeNotifier {
       'metadata': metadata, 
       'tags': tags.toList(),
       'outgoingLinks': outgoingLinks.toSet().toList(), // Deduplicate
+      'isPublished': metadata['published'] == true,
     };
   }
 }

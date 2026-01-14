@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../services/git_service.dart';
 import '../services/note_service.dart';
+import '../services/supabase_service.dart';
 
 class DeployScreen extends StatefulWidget {
   const DeployScreen({super.key});
@@ -78,9 +79,11 @@ class _DeployScreenState extends State<DeployScreen> {
     const accent = Color(0xFFD93025);
     const borderColor = Color(0xFF333333);
     const surface = Color(0xFF1F1F1F);
+    const supabaseAccent = Color(0xFF3ECF8E);
 
     final noteService = Provider.of<NoteService>(context);
     final gitService = Provider.of<GitService>(context);
+    final supabaseService = Provider.of<SupabaseService>(context);
 
     final stagedFiles = _gitFiles.where((f) => f.isStaged).toList();
     final unstagedFiles = _gitFiles.where((f) => !f.isStaged).toList();
@@ -89,7 +92,7 @@ class _DeployScreenState extends State<DeployScreen> {
       backgroundColor: bgMain,
       appBar: AppBar(
         backgroundColor: bgMain,
-        title: Text("Staging Area", style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.bold, color: textMain)),
+        title: Text("Deploy & Sync", style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.bold, color: textMain)),
         iconTheme: const IconThemeData(color: textMain),
         actions: [
           IconButton(
@@ -102,7 +105,11 @@ class _DeployScreenState extends State<DeployScreen> {
               children: [
                 Container(width: 8, height: 8, decoration: BoxDecoration(color: gitService.lastError == null ? Colors.green : accent, shape: BoxShape.circle)),
                 const SizedBox(width: 8),
-                Text(gitService.lastError == null ? "system: stable" : "system: error", style: GoogleFonts.jetBrainsMono(color: textMuted, fontSize: 12)),
+                Text(gitService.lastError == null ? "Git: OK" : "Git: Error", style: GoogleFonts.jetBrainsMono(color: textMuted, fontSize: 12)),
+                const SizedBox(width: 16),
+                Container(width: 8, height: 8, decoration: BoxDecoration(color: supabaseService.isInitialized ? supabaseAccent : textMuted, shape: BoxShape.circle)),
+                const SizedBox(width: 8),
+                Text(supabaseService.isInitialized ? "Supabase: ON" : "Supabase: OFF", style: GoogleFonts.jetBrainsMono(color: textMuted, fontSize: 12)),
               ],
             ),
           )
@@ -206,61 +213,123 @@ class _DeployScreenState extends State<DeployScreen> {
                 Positioned(
                   top: 20,
                   right: 20,
-                  child: Container(
-                    width: 400,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: surface,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: borderColor),
-                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 10)],
-                    ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text("COMMIT MESSAGE", style: GoogleFonts.spaceGrotesk(color: textMuted, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: _commitController,
-                          style: GoogleFonts.jetBrainsMono(color: textMain, fontSize: 12),
-                          maxLines: 3,
-                          decoration: InputDecoration(
-                            hintText: "What are you deploying?",
-                            hintStyle: GoogleFonts.jetBrainsMono(color: textMuted, fontSize: 12),
-                            fillColor: const Color(0xFF111111),
-                            filled: true,
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: BorderSide.none),
-                          ),
+                  child: Column(
+                    children: [
+                      // Git Card
+                      Container(
+                        width: 400,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: surface,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: borderColor),
+                          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 10)],
                         ),
-                        const SizedBox(height: 16),
-                        ElevatedButton.icon(
-                          onPressed: (gitService.isSyncing || noteService.notesPath == null) 
-                            ? null 
-                            : () async {
-                                await gitService.pushToBlog(
-                                  noteService.notesPath!, 
-                                  commitMessage: _commitController.text.isNotEmpty ? _commitController.text : null
-                                );
-                                if (gitService.lastError == null) {
-                                  _commitController.clear();
-                                  _refreshStatus();
-                                }
-                              },
-                          icon: gitService.isSyncing 
-                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: textMain)) 
-                            : const Icon(Icons.cloud_upload),
-                          label: Text(gitService.isSyncing ? "SYNCING..." : "PUSH TO BLOG"),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: accent,
-                            foregroundColor: textMain,
-                            minimumSize: const Size(double.infinity, 48),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                            textStyle: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.bold),
-                          ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text("GIT COMMIT & PUSH", style: GoogleFonts.spaceGrotesk(color: textMuted, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
+                            const SizedBox(height: 12),
+                            TextField(
+                              controller: _commitController,
+                              style: GoogleFonts.jetBrainsMono(color: textMain, fontSize: 12),
+                              maxLines: 2,
+                              decoration: InputDecoration(
+                                hintText: "Commit message...",
+                                hintStyle: GoogleFonts.jetBrainsMono(color: textMuted, fontSize: 12),
+                                fillColor: const Color(0xFF111111),
+                                filled: true,
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: BorderSide.none),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton.icon(
+                              onPressed: (gitService.isSyncing || noteService.notesPath == null) 
+                                ? null 
+                                : () async {
+                                    await gitService.pushToBlog(
+                                      noteService.notesPath!, 
+                                      commitMessage: _commitController.text.isNotEmpty ? _commitController.text : null
+                                    );
+                                    if (gitService.lastError == null) {
+                                      _commitController.clear();
+                                      _refreshStatus();
+                                    }
+                                  },
+                              icon: gitService.isSyncing 
+                                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: textMain)) 
+                                : const Icon(Icons.cloud_upload),
+                              label: Text(gitService.isSyncing ? "SYNCING..." : "PUSH TO GIT"),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: accent,
+                                foregroundColor: textMain,
+                                minimumSize: const Size(double.infinity, 48),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 16),
+                      // Supabase Card
+                      Container(
+                        width: 400,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: surface,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: borderColor),
+                          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 10)],
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text("BLOG SYNC (SUPABASE)", style: GoogleFonts.spaceGrotesk(color: textMuted, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
+                                if (supabaseService.lastError != null)
+                                  const Icon(Icons.error_outline, color: accent, size: 14),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              "This will sync all your notes to the Supabase 'notes' table.", 
+                              style: GoogleFonts.jetBrainsMono(color: textMuted, fontSize: 11)
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton.icon(
+                              onPressed: (supabaseService.isSyncing || !supabaseService.isInitialized) 
+                                ? null 
+                                : () async {
+                                    try {
+                                      await supabaseService.syncAll(noteService.notes);
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(content: Text("Blog Sync Successful"))
+                                      );
+                                    } catch (e) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text("Sync Error: $e"), backgroundColor: accent)
+                                      );
+                                    }
+                                  },
+                              icon: supabaseService.isSyncing 
+                                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: textMain)) 
+                                : const Icon(Icons.bolt),
+                              label: Text(supabaseService.isSyncing ? "SYNCING..." : "SYNC TO BLOG"),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: supabaseAccent,
+                                foregroundColor: bgMain,
+                                minimumSize: const Size(double.infinity, 48),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 )
               ],
