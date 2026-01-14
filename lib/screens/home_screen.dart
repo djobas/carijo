@@ -10,6 +10,7 @@ import 'graph_view_screen.dart';
 import 'deploy_screen.dart';
 import '../services/note_service.dart';
 import '../services/git_service.dart';
+import '../widgets/command_palette.dart';
 import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -109,6 +110,9 @@ class _HomeScreenState extends State<HomeScreen> {
       bindings: {
         SingleActivator(LogicalKeyboardKey.keyS, control: true): () {
           noteService.manualSaveCurrentNote(_editorController.text);
+        },
+        SingleActivator(LogicalKeyboardKey.keyP, control: true, shift: true): () {
+          _showCommandPalette(context, noteService);
         },
       },
       child: Focus(
@@ -337,16 +341,23 @@ class _HomeScreenState extends State<HomeScreen> {
                           child: Stack(
                             children: [
                               if (_isEditing) 
-                                Padding(
-                                  padding: const EdgeInsets.all(32.0),
-                                  child: TextField(
-                                    controller: _editorController,
-                                    maxLines: null,
-                                    expands: true,
-                                    style: GoogleFonts.jetBrainsMono(color: textMain, fontSize: 16, height: 1.6),
-                                    cursorColor: accent,
-                                    decoration: const InputDecoration(border: InputBorder.none),
-                                  ),
+                                Column(
+                                  children: [
+                                    _buildFormattingToolbar(noteService),
+                                    Expanded(
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(32.0),
+                                        child: TextField(
+                                          controller: _editorController,
+                                          maxLines: null,
+                                          expands: true,
+                                          style: GoogleFonts.jetBrainsMono(color: textMain, fontSize: 16, height: 1.6),
+                                          cursorColor: accent,
+                                          decoration: const InputDecoration(border: InputBorder.none),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 )
                               else
                                 SingleChildScrollView(
@@ -370,6 +381,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                           h2: GoogleFonts.spaceGrotesk(color: textMain, fontSize: 24, fontWeight: FontWeight.bold),
                                           code: GoogleFonts.jetBrainsMono(backgroundColor: const Color(0xFF242424), color: accent),
                                           codeblockDecoration: BoxDecoration(color: const Color(0xFF111111), borderRadius: BorderRadius.circular(4)),
+                                          checkbox: TextStyle(color: accent),
                                         ),
                                       ),
                                       const SizedBox(height: 64),
@@ -766,6 +778,114 @@ class _HomeScreenState extends State<HomeScreen> {
         noteService.updateCurrentNote(_editorController.text);
       }
     }
+  }
+
+  Widget _buildFormattingToolbar(NoteService noteService) {
+    return Container(
+      height: 40,
+      decoration: const BoxDecoration(
+        color: Color(0xFF1E1E1E),
+        border: Border(bottom: BorderSide(color: borderColor)),
+      ),
+      child: Row(
+        children: [
+          const SizedBox(width: 24),
+          _buildToolbarBtn(Icons.format_bold, () => _wrapSelection("**")),
+          _buildToolbarBtn(Icons.format_italic, () => _wrapSelection("_")),
+          _buildToolbarBtn(Icons.code, () => _wrapSelection("`")),
+          const VerticalDivider(color: borderColor, indent: 10, endIndent: 10),
+          _buildToolbarBtn(Icons.format_list_bulleted, () => _toggleLinePrefix("- ")),
+          _buildToolbarBtn(Icons.check_box_outlined, () => _toggleLinePrefix("- [ ] ")),
+          _buildToolbarBtn(Icons.title, () => _toggleLinePrefix("# ")),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildToolbarBtn(IconData icon, VoidCallback onPressed) {
+    return IconButton(
+      icon: Icon(icon, color: textMuted, size: 18),
+      onPressed: onPressed,
+      hoverColor: const Color(0xFF2A2A2A),
+      constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+      padding: EdgeInsets.zero,
+    );
+  }
+
+  void _wrapSelection(String prefix, [String? suffix]) {
+    final s = suffix ?? prefix;
+    final text = _editorController.text;
+    final selection = _editorController.selection;
+    if (selection.start == -1) return;
+
+    final selectedText = text.substring(selection.start, selection.end);
+    final newText = text.replaceRange(selection.start, selection.end, "$prefix$selectedText$s");
+    
+    _editorController.text = newText;
+    _editorController.selection = TextSelection(
+      baseOffset: selection.start + prefix.length,
+      extentOffset: selection.end + prefix.length,
+    );
+  }
+
+  void _toggleLinePrefix(String prefix) {
+    final text = _editorController.text;
+    final selection = _editorController.selection;
+    if (selection.start == -1) return;
+
+    // Find the start of the line
+    int lineStart = text.lastIndexOf('\n', selection.start - 1) + 1;
+    if (lineStart < 0) lineStart = 0;
+
+    final line = text.substring(lineStart, selection.end); // To handle multi-line if needed, but simple for now
+    
+    String newText;
+    if (line.startsWith(prefix)) {
+      newText = text.replaceRange(lineStart, lineStart + prefix.length, "");
+      _editorController.text = newText;
+      _editorController.selection = TextSelection.collapsed(offset: selection.start - prefix.length);
+    } else {
+      newText = text.replaceRange(lineStart, lineStart, prefix);
+      _editorController.text = newText;
+      _editorController.selection = TextSelection.collapsed(offset: selection.start + prefix.length);
+    }
+  }
+
+  void _handleCheckboxToggle(NoteService noteService, String text, bool checked) {
+    // text is the content of the list item without the [ ] or [x]
+    final currentContent = _editorController.text;
+    final lines = currentContent.split('\n');
+    
+    for (int i = 0; i < lines.length; i++) {
+      final line = lines[i];
+      // Search for the line that contains this text and a checkbox
+      if (line.contains(text) && (line.contains('[ ]') || line.contains('[x]'))) {
+        if (checked) {
+          lines[i] = line.replaceFirst('[ ]', '[x]');
+        } else {
+          lines[i] = line.replaceFirst('[x]', '[ ]');
+        }
+        break;
+      }
+    }
+    
+  void _showCommandPalette(BuildContext context, NoteService noteService) {
+    final gitService = Provider.of<GitService>(context, listen: false);
+    showDialog(
+      context: context,
+      barrierColor: Colors.black.withOpacity(0.5),
+      builder: (context) => CommandPalette(
+        actions: [
+          CommandAction(label: "New Note", icon: Icons.add, onAction: () => _showNewNoteOptions(context, noteService)),
+          CommandAction(label: "Daily Note", icon: Icons.calendar_today, onAction: () => noteService.openDailyNote()),
+          CommandAction(label: "Toggle Preview", icon: Icons.auto_stories, onAction: () => setState(() => _isEditing = !_isEditing)),
+          CommandAction(label: "Insert Image", icon: Icons.image, onAction: () => _pickAndInsertImage(noteService)),
+          CommandAction(label: "Graph View", icon: Icons.hub, onAction: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GraphViewScreen(notes: noteService.notes)))),
+          CommandAction(label: "Deploy / Sync", icon: Icons.cloud_upload, onAction: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DeployScreen()))),
+          CommandAction(label: "Settings", icon: Icons.settings, onAction: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()))),
+        ],
+      ),
+    );
   }
 
   void _showNewNoteOptions(BuildContext context, NoteService noteService) {
