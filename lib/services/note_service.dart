@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:yaml/yaml.dart';
+import 'package:path/path.dart' as p;
 
 class Note {
   final String title;
@@ -23,9 +24,26 @@ class Note {
   });
 }
 
+class NoteFolder {
+  final String name;
+  final String path;
+  final List<NoteFolder> subfolders;
+  final List<Note> notes;
+  bool isExpanded;
+
+  NoteFolder({
+    required this.name,
+    required this.path,
+    required this.subfolders,
+    required this.notes,
+    this.isExpanded = false,
+  });
+}
+
 class NoteService extends ChangeNotifier {
   String? _notesPath;
   List<Note> _notes = [];
+  NoteFolder? _rootFolder;
   Note? _selectedNote;
   bool _isLoading = true;
   Map<String, List<Note>> _backlinks = {};
@@ -36,6 +54,7 @@ class NoteService extends ChangeNotifier {
   final Set<String> _autoSaveEnabledPaths = {};
 
   String? get notesPath => _notesPath;
+  NoteFolder? get rootFolder => _rootFolder;
   List<Note> get notes {
     List<Note> filtered = _notes;
     if (_filterTag != null) {
@@ -104,10 +123,16 @@ class NoteService extends ChangeNotifier {
     try {
       final dir = Directory(_notesPath!);
       if (await dir.exists()) {
-        final List<FileSystemEntity> entities = dir.listSync();
+        final List<FileSystemEntity> entities = dir.listSync(recursive: true);
         final List<Note> loadedNotes = [];
 
         for (var entity in entities) {
+          // Skip internal directories
+          if (entity.path.contains('${Platform.pathSeparator}.') || 
+              entity.path.contains('${Platform.pathSeparator}assets${Platform.pathSeparator}')) {
+            continue;
+          }
+
           if (entity is File && entity.path.endsWith('.md')) {
             final content = await entity.readAsString();
             final stat = await entity.stat();
@@ -132,6 +157,8 @@ class NoteService extends ChangeNotifier {
         
         // Build Backlinks
         _buildBacklinks();
+        // Build Folder Tree
+        _buildFolderTree();
       }
     } catch (e) {
       print("Error loading notes: $e");
@@ -141,6 +168,88 @@ class NoteService extends ChangeNotifier {
     _buildTags();
     _scanTemplates();
     notifyListeners();
+  }
+
+  Future<String?> addImageToNote(File imageFile) async {
+    if (_notesPath == null) return null;
+
+    try {
+      final assetsDir = Directory('$_notesPath${Platform.pathSeparator}assets');
+      if (!await assetsDir.exists()) {
+        await assetsDir.create(recursive: true);
+      }
+
+      final fileName = p.basename(imageFile.path);
+      final targetPath = p.join(assetsDir.path, fileName);
+      
+      // Copy the file
+      await imageFile.copy(targetPath);
+      
+      // Return the standard markdown link with relative path
+      return '![](assets/$fileName)';
+    } catch (e) {
+      print("Error adding image: $e");
+      return null;
+    }
+  }
+
+  void _buildFolderTree() {
+    if (_notesPath == null) {
+      _rootFolder = null;
+      return;
+    }
+
+    final root = NoteFolder(
+      name: p.basename(_notesPath!),
+      path: _notesPath!,
+      subfolders: [],
+      notes: [],
+      isExpanded: true,
+    );
+
+    for (var note in _notes) {
+      final relativePath = p.relative(note.path, from: _notesPath);
+      final parts = p.split(relativePath);
+      
+      NoteFolder currentFolder = root;
+      
+      // Traverse/create subfolders
+      for (int i = 0; i < parts.length - 1; i++) {
+        final folderName = parts[i];
+        final folderPath = p.join(currentFolder.path, folderName);
+        
+        NoteFolder nextFolder;
+        final existing = currentFolder.subfolders.where((f) => f.name == folderName);
+        
+        if (existing.isNotEmpty) {
+          nextFolder = existing.first;
+        } else {
+          nextFolder = NoteFolder(
+            name: folderName,
+            path: folderPath,
+            subfolders: [],
+            notes: [],
+          );
+          currentFolder.subfolders.add(nextFolder);
+        }
+        currentFolder = nextFolder;
+      }
+      
+      currentFolder.notes.add(note);
+    }
+    
+    // Sort folders and notes
+    _sortFolder(root);
+    
+    _rootFolder = root;
+  }
+
+  void _sortFolder(NoteFolder folder) {
+    folder.subfolders.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    folder.notes.sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+    for (var sub in folder.subfolders) {
+      _sortFolder(sub);
+    }
   }
 
   void _buildTags() {

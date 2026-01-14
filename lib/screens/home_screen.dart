@@ -1,7 +1,10 @@
+import 'dart:io';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
 import 'graph_view_screen.dart';
 import 'deploy_screen.dart';
@@ -22,12 +25,21 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController = TextEditingController();
   bool _isEditing = true;
   String? _lastSelectedPath;
+  bool _showProperties = false;
+  final Set<String> _expandedFolders = {};
   
+  // Theme Constants
+  static const Color bgDark = Color(0xFF1A1A1A);
+  static const Color bgSidebar = Color(0xFF161616);
+  static const Color borderColor = Color(0xFF2A2A2A);
+  static const Color textMain = Color(0xFFF4F1EA);
+  static const Color textMuted = Color(0xFF8C8C8C);
+  static const Color accent = Color(0xFFD93025);
+
   // Autocomplete state
   bool _showAutocomplete = false;
   String _autocompleteQuery = "";
   int _autocompleteCursorPos = -1;
-  bool _showProperties = false;
 
   @override
   void initState() {
@@ -90,13 +102,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const bgDark = Color(0xFF1A1A1A);
-    const bgSidebar = Color(0xFF161616);
-    const borderColor = Color(0xFF2A2A2A);
-    const textMain = Color(0xFFF4F1EA);
-    const textMuted = Color(0xFF8C8C8C);
-    const accent = Color(0xFFD93025);
-
     final noteService = Provider.of<NoteService>(context);
     _syncEditorWithSelection(noteService);
 
@@ -218,45 +223,20 @@ class _HomeScreenState extends State<HomeScreen> {
                             );
                           }
                           
-                          return ListView.builder(
-                            itemCount: noteService.notes.length,
-                            itemBuilder: (context, index) {
-                              final note = noteService.notes[index];
-                              final isSelected = noteService.selectedNote?.path == note.path;
-                              
-                              return InkWell(
-                                onTap: () {
-                                  noteService.selectNote(note);
-                                  _editorController.text = note.content;
-                                },
-                                child: Container(
-                                  decoration: BoxDecoration(
-                                    border: Border(left: BorderSide(color: isSelected ? accent : Colors.transparent, width: 2)),
-                                    color: isSelected ? const Color(0xFF242424) : null,
-                                  ),
-                                  padding: const EdgeInsets.all(16),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(note.title, 
-                                        maxLines: 1, 
-                                        overflow: TextOverflow.ellipsis,
-                                        style: GoogleFonts.jetBrainsMono(
-                                          color: textMain, 
-                                          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal
-                                        )
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(note.content,
-                                        maxLines: 2,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: GoogleFonts.jetBrainsMono(color: textMuted, fontSize: 12),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
+                          if (noteService.rootFolder == null) return const SizedBox();
+                          
+                          // If filtering or searching, show flat list for clarity
+                          if (noteService.filterTag != null || noteService.searchQuery.isNotEmpty) {
+                            return ListView.builder(
+                              itemCount: noteService.notes.length,
+                              itemBuilder: (context, index) => _buildSimpleNoteItem(noteService.notes[index], noteService),
+                            );
+                          }
+
+                          return ListView(
+                            children: [
+                              _buildFolderItem(noteService.rootFolder!, noteService, level: 0),
+                            ],
                           );
                         },
                       ),
@@ -327,6 +307,12 @@ class _HomeScreenState extends State<HomeScreen> {
                                 icon: const Icon(Icons.delete_outline, color: textMuted, size: 20),
                                 tooltip: "Delete Note",
                               ),
+                              const SizedBox(width: 12),
+                              IconButton(
+                                onPressed: () => _pickAndInsertImage(noteService), 
+                                icon: const Icon(Icons.image_outlined, color: textMuted, size: 20),
+                                tooltip: "Insert Image",
+                              ),
                               const Spacer(),
                               IconButton(
                                 onPressed: () => setState(() => _showProperties = !_showProperties), 
@@ -370,6 +356,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     children: [
                                       MarkdownBody(
                                         data: _editorController.text,
+                                        imageDirectory: noteService.notesPath,
                                         onTapLink: (text, href, title) {
                                           if (href != null) {
                                             _navigateToNote(href);
@@ -623,6 +610,162 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildSimpleNoteItem(Note note, NoteService noteService) {
+    final isSelected = noteService.selectedNote?.path == note.path;
+    return InkWell(
+      onTap: () {
+        noteService.selectNote(note);
+        _editorController.text = note.content;
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border(left: BorderSide(color: isSelected ? accent : Colors.transparent, width: 2)),
+          color: isSelected ? const Color(0xFF242424) : null,
+        ),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(note.title, 
+              maxLines: 1, 
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.jetBrainsMono(
+                color: textMain, 
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal
+              )
+            ),
+            const SizedBox(height: 4),
+            Text(note.content.substring(0, min(100, note.content.length)).replaceAll('\n', ' '),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.jetBrainsMono(color: textMuted, fontSize: 11)
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFolderItem(NoteFolder folder, NoteService noteService, {int level = 0}) {
+    final isExpanded = _expandedFolders.contains(folder.path) || folder.path == noteService.notesPath;
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        InkWell(
+          onTap: () {
+            setState(() {
+              if (_expandedFolders.contains(folder.path)) {
+                _expandedFolders.remove(folder.path);
+              } else {
+                _expandedFolders.add(folder.path);
+              }
+            });
+          },
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(16.0 + (level * 12), 8, 16, 8),
+            child: Row(
+              children: [
+                Icon(
+                  isExpanded ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_right,
+                  size: 16,
+                  color: textMuted,
+                ),
+                const SizedBox(width: 4),
+                Icon(
+                  isExpanded ? Icons.folder_open : Icons.folder,
+                  size: 16,
+                  color: accent.withOpacity(0.7),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    folder.name,
+                    style: GoogleFonts.spaceGrotesk(
+                      color: textMain,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (isExpanded) ...[
+          ...folder.subfolders.map((sub) => _buildFolderItem(sub, noteService, level: level + 1)),
+          ...folder.notes.map((note) => _buildNoteItem(note, noteService, level: level + 1)),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildNoteItem(Note note, NoteService noteService, {int level = 0}) {
+    final isSelected = noteService.selectedNote?.path == note.path;
+
+    return InkWell(
+      onTap: () {
+        noteService.selectNote(note);
+        _editorController.text = note.content;
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border(left: BorderSide(color: isSelected ? accent : Colors.transparent, width: 2)),
+          color: isSelected ? const Color(0xFF242424) : null,
+        ),
+        padding: EdgeInsets.fromLTRB(36.0 + (level * 12), 10, 16, 10),
+        child: Row(
+          children: [
+            const Icon(Icons.description_outlined, size: 14, color: textMuted),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                note.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.jetBrainsMono(
+                  color: textMain,
+                  fontSize: 12,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickAndInsertImage(NoteService noteService) async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      allowMultiple: false,
+    );
+
+    if (result != null && result.files.single.path != null) {
+      final imageFile = File(result.files.single.path!);
+      final markdownLink = await noteService.addImageToNote(imageFile);
+
+      if (markdownLink != null) {
+        final currentText = _editorController.text;
+        final selection = _editorController.selection;
+        
+        // If no selection or cursor at end, just append
+        if (selection.start == -1) {
+          _editorController.text = "$currentText\n$markdownLink\n";
+        } else {
+          final newText = currentText.replaceRange(selection.start, selection.end, markdownLink);
+          _editorController.text = newText;
+          // Position cursor after the link
+          _editorController.selection = TextSelection.collapsed(offset: selection.start + markdownLink.length);
+        }
+        
+        // Save automatically if possible
+        noteService.updateCurrentNote(_editorController.text);
+      }
+    }
   }
 
   void _showNewNoteOptions(BuildContext context, NoteService noteService) {
