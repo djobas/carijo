@@ -5,7 +5,7 @@ import 'services/note_service.dart';
 import 'services/git_service.dart';
 import 'screens/home_screen.dart';
 import 'components/quick_capture.dart';
-import 'components/command_palette.dart';
+import 'widgets/command_palette.dart';
 
 void main() {
   runApp(
@@ -44,7 +44,22 @@ class CarijoApp extends StatelessWidget {
                 barrierColor: Colors.black.withOpacity(0.7),
               );
             },
+            const SingleActivator(LogicalKeyboardKey.keyP, control: true, shift: true): () {
+              showDialog(
+                context: context, 
+                builder: (_) => const CommandPalette(),
+                barrierColor: Colors.black.withOpacity(0.7),
+              );
+            },
             const SingleActivator(LogicalKeyboardKey.keyK, meta: true): () {
+              // MacOS support
+              showDialog(
+                context: context, 
+                builder: (_) => const CommandPalette(),
+                barrierColor: Colors.black.withOpacity(0.7),
+              );
+            },
+            const SingleActivator(LogicalKeyboardKey.keyP, meta: true, shift: true): () {
               // MacOS support
               showDialog(
                 context: context, 

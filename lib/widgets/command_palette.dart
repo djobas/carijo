@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+import '../services/note_service.dart';
+import '../screens/graph_view_screen.dart';
+import '../screens/deploy_screen.dart';
+import '../screens/settings_screen.dart';
 
 class CommandAction {
   final String label;
@@ -11,9 +16,9 @@ class CommandAction {
 }
 
 class CommandPalette extends StatefulWidget {
-  final List<CommandAction> actions;
+  final List<CommandAction>? actions;
 
-  const CommandPalette({super.key, required this.actions});
+  const CommandPalette({super.key, this.actions});
 
   @override
   State<CommandPalette> createState() => _CommandPaletteState();
@@ -27,14 +32,45 @@ class _CommandPaletteState extends State<CommandPalette> {
   @override
   void initState() {
     super.initState();
-    _filteredActions = widget.actions;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadActions('');
+    });
   }
 
-  void _filterActions(String query) {
+  void _loadActions(String query) {
+    if (widget.actions != null) {
+      setState(() {
+        _filteredActions = widget.actions!
+            .where((a) => a.label.toLowerCase().contains(query.toLowerCase()))
+            .toList();
+        _selectedIndex = 0;
+      });
+      return;
+    }
+
+    // Default actions if none provided
+    final noteService = Provider.of<NoteService>(context, listen: false);
+    
+    final List<CommandAction> defaults = [
+      CommandAction(label: "New Note", icon: Icons.add, onAction: () => noteService.createNewNote()),
+      CommandAction(label: "Daily Note", icon: Icons.calendar_today, onAction: () => noteService.openDailyNote()),
+      CommandAction(label: "Graph View", icon: Icons.hub, onAction: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GraphViewScreen(notes: noteService.notes)))),
+      CommandAction(label: "Deploy / Sync", icon: Icons.cloud_upload, onAction: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DeployScreen()))),
+      CommandAction(label: "Settings", icon: Icons.settings, onAction: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()))),
+    ];
+
+    // Also add note search results if they match
+    final matchingNotes = noteService.searchNotes(query);
+    for (var note in matchingNotes) {
+      defaults.add(CommandAction(
+        label: "Open: ${note.title}", 
+        icon: Icons.description, 
+        onAction: () => noteService.selectNote(note)
+      ));
+    }
+
     setState(() {
-      _filteredActions = widget.actions
-          .where((a) => a.label.toLowerCase().contains(query.toLowerCase()))
-          .toList();
+      _filteredActions = defaults.where((a) => a.label.toLowerCase().contains(query.toLowerCase())).toList();
       _selectedIndex = 0;
     });
   }
@@ -83,7 +119,7 @@ class _CommandPaletteState extends State<CommandPalette> {
                   child: TextField(
                     controller: _searchController,
                     autofocus: true,
-                    onChanged: _filterActions,
+                    onChanged: _loadActions,
                     style: GoogleFonts.jetBrainsMono(color: textMain),
                     decoration: InputDecoration(
                       hintText: "Type a command...",

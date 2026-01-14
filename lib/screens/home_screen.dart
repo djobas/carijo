@@ -114,6 +114,9 @@ class _HomeScreenState extends State<HomeScreen> {
         SingleActivator(LogicalKeyboardKey.keyP, control: true, shift: true): () {
           _showCommandPalette(context, noteService);
         },
+        SingleActivator(LogicalKeyboardKey.keyK, control: true): () {
+          _showCommandPalette(context, noteService);
+        },
       },
       child: Focus(
         autofocus: true,
@@ -310,6 +313,12 @@ class _HomeScreenState extends State<HomeScreen> {
                                 }, 
                                 icon: const Icon(Icons.delete_outline, color: textMuted, size: 20),
                                 tooltip: "Delete Note",
+                              ),
+                              const SizedBox(width: 12),
+                              IconButton(
+                                onPressed: () => _showCommandPalette(context, noteService),
+                                icon: const Icon(Icons.search, color: textMuted, size: 20),
+                                tooltip: "Command Palette (Ctrl+Shift+P)",
                               ),
                               const SizedBox(width: 12),
                               IconButton(
@@ -851,24 +860,6 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  void _handleCheckboxToggle(NoteService noteService, String text, bool checked) {
-    // text is the content of the list item without the [ ] or [x]
-    final currentContent = _editorController.text;
-    final lines = currentContent.split('\n');
-    
-    for (int i = 0; i < lines.length; i++) {
-      final line = lines[i];
-      // Search for the line that contains this text and a checkbox
-      if (line.contains(text) && (line.contains('[ ]') || line.contains('[x]'))) {
-        if (checked) {
-          lines[i] = line.replaceFirst('[ ]', '[x]');
-        } else {
-          lines[i] = line.replaceFirst('[x]', '[ ]');
-        }
-        break;
-      }
-    }
-    
   void _showCommandPalette(BuildContext context, NoteService noteService) {
     final gitService = Provider.of<GitService>(context, listen: false);
     showDialog(
