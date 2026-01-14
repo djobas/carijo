@@ -25,12 +25,15 @@ class NoteService extends ChangeNotifier {
   Note? _selectedNote;
   bool _isLoading = true;
   Map<String, List<Note>> _backlinks = {};
+  final Set<String> _autoSaveEnabledPaths = {};
 
   String? get notesPath => _notesPath;
   List<Note> get notes => _notes;
   Note? get selectedNote => _selectedNote;
   bool get isLoading => _isLoading;
   Map<String, List<Note>> get backlinks => _backlinks;
+  
+  bool isAutoSaveEnabled(String path) => _autoSaveEnabledPaths.contains(path);
 
   NoteService() {
     _init();
@@ -196,6 +199,10 @@ class NoteService extends ChangeNotifier {
 
   Future<void> updateCurrentNote(String newContent) async {
     if (_selectedNote == null) return;
+    
+    // Skip auto-save if not enabled for this path yet
+    if (!_autoSaveEnabledPaths.contains(_selectedNote!.path)) return;
+
     final file = File(_selectedNote!.path);
     await file.writeAsString(newContent);
     // Optimistic update
@@ -211,6 +218,26 @@ class NoteService extends ChangeNotifier {
       _selectedNote = _notes[index];
       notifyListeners();
     }
+  }
+
+  Future<void> manualSaveCurrentNote(String content) async {
+    if (_selectedNote == null) return;
+    
+    // 1. Perform the save
+    final file = File(_selectedNote!.path);
+    await file.writeAsString(content);
+    
+    // 2. Enable auto-save for this note for future edits
+    _autoSaveEnabledPaths.add(_selectedNote!.path);
+    
+    // 3. Refresh metadata/title (especially if user just typed an H1)
+    await refreshNotes();
+    
+    // 4. Force selection update to reflect potential title change
+    final updatedNote = _notes.firstWhere((n) => n.path == file.path, orElse: () => _notes.first);
+    selectNote(updatedNote);
+    
+    notifyListeners();
   }
 
   Map<String, dynamic> _parseNoteContent(String content, String filename) {
