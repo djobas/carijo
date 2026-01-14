@@ -140,8 +140,9 @@ class _CommandPaletteState extends State<CommandPalette> {
                     ),
                     onSubmitted: (_) {
                       if (_filteredActions.isNotEmpty) {
-                        _filteredActions[_selectedIndex].onAction();
+                        final action = _filteredActions[_selectedIndex];
                         Navigator.pop(context);
+                        action.onAction();
                       }
                     },
                   ),
@@ -158,8 +159,8 @@ class _CommandPaletteState extends State<CommandPalette> {
                           final isSelected = index == _selectedIndex;
                           return InkWell(
                             onTap: () {
-                              action.onAction();
                               Navigator.pop(context);
+                              action.onAction();
                             },
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
