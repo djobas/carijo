@@ -32,6 +32,7 @@ class NoteService extends ChangeNotifier {
   Map<String, List<Note>> _allTags = {};
   String? _filterTag;
   String _searchQuery = "";
+  List<Note> _templates = [];
   final Set<String> _autoSaveEnabledPaths = {};
 
   String? get notesPath => _notesPath;
@@ -55,6 +56,7 @@ class NoteService extends ChangeNotifier {
   Map<String, List<Note>> get allTags => _allTags;
   String? get filterTag => _filterTag;
   String get searchQuery => _searchQuery;
+  List<Note> get templates => _templates;
 
   bool isAutoSaveEnabled(String path) => _autoSaveEnabledPaths.contains(path);
 
@@ -137,6 +139,7 @@ class NoteService extends ChangeNotifier {
 
     _isLoading = false;
     _buildTags();
+    _scanTemplates();
     notifyListeners();
   }
 
@@ -195,14 +198,77 @@ class NoteService extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> createNewNote() async {
+  Future<void> createNewNote({String? title, String? content}) async {
     if (_notesPath == null) return;
     
     final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final filename = "Untitled $timestamp.md";
-    final defaultContent = "# New Note\n\nStart writing here...";
+    final filename = "${title ?? 'Untitled $timestamp'}.md";
+    final defaultContent = content ?? "# New Note\n\nStart writing here...";
     
     await saveNote(filename, defaultContent);
+  }
+
+  Future<void> openDailyNote() async {
+    if (_notesPath == null) return;
+
+    final now = DateTime.now();
+    final dateStr = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+    final filename = "$dateStr.md";
+    
+    // Check if it already exists in memory
+    final existing = _notes.where((n) => n.path.endsWith(filename));
+    if (existing.isNotEmpty) {
+      selectNote(existing.first);
+      return;
+    }
+
+    // Otherwise check file system or create
+    final path = '$_notesPath/$filename';
+    final file = File(path);
+
+    if (!await file.exists()) {
+      await file.writeAsString('# $dateStr\n\n#daily\n\n');
+      await refreshNotes();
+    }
+
+    try {
+      final note = _notes.firstWhere((n) => n.path.endsWith(filename));
+      selectNote(note);
+    } catch (e) {
+      print("Error opening daily note: $e");
+    }
+  }
+
+  Future<void> _scanTemplates() async {
+    if (_notesPath == null) return;
+    final templateDir = Directory('$_notesPath${Platform.pathSeparator}.templates');
+    if (!await templateDir.exists()) {
+      _templates = [];
+      return;
+    }
+
+    final List<Note> loadedTemplates = [];
+    final entities = templateDir.listSync();
+    
+    for (var entity in entities) {
+      if (entity is File && entity.path.endsWith('.md')) {
+        final content = await entity.readAsString();
+        final filename = entity.path.split(Platform.pathSeparator).last;
+        final noteData = _parseNoteContent(content, filename);
+        
+        loadedTemplates.add(Note(
+          title: noteData['title'],
+          content: content,
+          path: entity.path,
+          modified: (await entity.stat()).modified,
+          metadata: noteData['metadata'],
+          tags: noteData['tags'],
+          outgoingLinks: noteData['outgoingLinks'],
+        ));
+      }
+    }
+    _templates = loadedTemplates;
+    notifyListeners();
   }
 
   Future<void> deleteNote(Note note) async {

@@ -3,7 +3,10 @@ import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'graph_view_screen.dart';
+import 'deploy_screen.dart';
 import '../services/note_service.dart';
+import '../services/git_service.dart';
 import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -135,12 +138,26 @@ class _HomeScreenState extends State<HomeScreen> {
                               icon: const Icon(Icons.close, color: textMuted, size: 18),
                               tooltip: "Clear Filter",
                             )
-                          else
+                          else ...[
                             IconButton(
-                              onPressed: () => noteService.createNewNote(), 
+                              onPressed: () => noteService.openDailyNote(),
+                              icon: const Icon(Icons.calendar_today, color: textMuted, size: 18),
+                              tooltip: "Daily Note",
+                            ),
+                            IconButton(
+                              onPressed: () => Navigator.push(
+                                context, 
+                                MaterialPageRoute(builder: (_) => GraphViewScreen(notes: noteService.notes))
+                              ),
+                              icon: const Icon(Icons.hub, color: textMuted, size: 18),
+                              tooltip: "Graph View",
+                            ),
+                            IconButton(
+                              onPressed: () => _showNewNoteOptions(context, noteService), 
                               icon: const Icon(Icons.add, color: textMuted, size: 20),
                               tooltip: "New Note (Ctrl+N)",
-                            )
+                            ),
+                          ]
                         ],
                       ),
                     ),
@@ -604,6 +621,41 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showNewNoteOptions(BuildContext context, NoteService noteService) {
+    if (noteService.templates.isEmpty) {
+      noteService.createNewNote();
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        title: Text("Create Note", style: GoogleFonts.spaceGrotesk(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              title: Text("Empty Note", style: GoogleFonts.jetBrainsMono(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(context);
+                noteService.createNewNote();
+              },
+            ),
+            const Divider(color: Color(0xFF2A2A2A)),
+            ...noteService.templates.map((template) => ListTile(
+              title: Text(template.title, style: GoogleFonts.jetBrainsMono(color: const Color(0xFFD93025))),
+              onTap: () {
+                Navigator.pop(context);
+                noteService.createNewNote(content: template.content);
+              },
+            )).toList(),
+          ],
+        ),
       ),
     );
   }
