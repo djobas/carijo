@@ -15,6 +15,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _editorController = TextEditingController();
+  final TextEditingController _titleController = TextEditingController();
   bool _isEditing = true;
   String? _lastSelectedPath;
   
@@ -73,11 +74,13 @@ class _HomeScreenState extends State<HomeScreen> {
       // Avoid triggering the listener while we programmatically update the text
       _editorController.removeListener(_onEditorChanged);
       _editorController.text = selectedNote.content;
+      _titleController.text = selectedNote.title;
       _lastSelectedPath = selectedNote.path;
       _editorController.addListener(_onEditorChanged);
     } else if (selectedNote == null) {
       _lastSelectedPath = null;
       _editorController.clear();
+      _titleController.clear();
     }
   }
 
@@ -114,20 +117,29 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 child: Column(
                   children: [
-                    // Header
                     Padding(
                       padding: const EdgeInsets.all(24.0),
                       child: Row(
                         children: [
-                          const Icon(Icons.grid_view, color: accent),
+                          Icon(noteService.filterTag != null ? Icons.filter_alt : Icons.grid_view, color: accent),
                           const SizedBox(width: 8),
-                          Text("Inbox", style: GoogleFonts.spaceGrotesk(color: textMain, fontSize: 20, fontWeight: FontWeight.bold)),
+                          Text(
+                            noteService.filterTag != null ? "#${noteService.filterTag}" : "Inbox", 
+                            style: GoogleFonts.spaceGrotesk(color: textMain, fontSize: 20, fontWeight: FontWeight.bold)
+                          ),
                           const Spacer(),
-                          IconButton(
-                            onPressed: () => noteService.createNewNote(), 
-                            icon: const Icon(Icons.add, color: textMuted, size: 20),
-                            tooltip: "New Note (Ctrl+N)",
-                          )
+                          if (noteService.filterTag != null)
+                            IconButton(
+                              onPressed: () => noteService.toggleTagFilter(null),
+                              icon: const Icon(Icons.close, color: textMuted, size: 18),
+                              tooltip: "Clear Filter",
+                            )
+                          else
+                            IconButton(
+                              onPressed: () => noteService.createNewNote(), 
+                              icon: const Icon(Icons.add, color: textMuted, size: 20),
+                              tooltip: "New Note (Ctrl+N)",
+                            )
                         ],
                       ),
                     ),
@@ -453,6 +465,7 @@ class _HomeScreenState extends State<HomeScreen> {
     const borderColor = Color(0xFF2A2A2A);
     const textMain = Color(0xFFF4F1EA);
     const textMuted = Color(0xFF8C8C8C);
+    const accent = Color(0xFFD93025);
 
     return Container(
       width: sidebarWidth,
@@ -480,7 +493,20 @@ class _HomeScreenState extends State<HomeScreen> {
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 24),
               children: [
-                _buildPropertyField("Title", note.title),
+                // Editable Title
+                Text("TITLE", style: GoogleFonts.spaceGrotesk(color: textMuted, fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _titleController,
+                  style: GoogleFonts.jetBrainsMono(color: textMain, fontSize: 13),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                    enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: borderColor)),
+                    focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: accent)),
+                  ),
+                ),
+                const SizedBox(height: 24),
                 _buildPropertyField("Path", note.path),
                 _buildPropertyField("Modified", note.modified.toString().split('.')[0]),
                 const SizedBox(height: 24),
@@ -492,21 +518,38 @@ class _HomeScreenState extends State<HomeScreen> {
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
-                    children: note.tags.map((tag) => Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF242424),
-                        borderRadius: BorderRadius.circular(4),
-                        border: Border.all(color: borderColor),
+                    children: note.tags.map((tag) => InkWell(
+                      onTap: () {
+                        noteService.toggleTagFilter(tag);
+                        setState(() => _showProperties = false); // Close properties to show filtered list
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: noteService.filterTag == tag ? accent.withOpacity(0.2) : const Color(0xFF242424),
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: noteService.filterTag == tag ? accent : borderColor),
+                        ),
+                        child: Text("#$tag", style: GoogleFonts.jetBrainsMono(color: textMain, fontSize: 11)),
                       ),
-                      child: Text("#$tag", style: GoogleFonts.jetBrainsMono(color: textMain, fontSize: 11)),
                     )).toList(),
                   ),
+                const SizedBox(height: 32),
+                ElevatedButton(
+                  onPressed: () => _updateNoteMetadata(noteService),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: accent,
+                    foregroundColor: textMain,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                    minimumSize: const Size(double.infinity, 40),
+                  ),
+                  child: Text("SAVE METADATA", style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.bold, fontSize: 12)),
+                ),
                 if (note.metadata.isNotEmpty) ...[
                   const SizedBox(height: 32),
                   Text("FRONTMATTER", style: GoogleFonts.spaceGrotesk(color: textMuted, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
                   const SizedBox(height: 12),
-                  ...note.metadata.entries.map((e) => _buildPropertyField(e.key, e.value.toString())),
+                  ...note.metadata.entries.where((e) => e.key != 'title').map((e) => _buildPropertyField(e.key, e.value.toString())),
                 ]
               ],
             ),
@@ -514,6 +557,42 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+  }
+
+  void _updateNoteMetadata(NoteService noteService) {
+    if (noteService.selectedNote == null) return;
+    
+    final note = noteService.selectedNote!;
+    final newTitle = _titleController.text;
+    String content = _editorController.text;
+
+    // 1. Update Title in Content
+    final RegExp frontmatterRegex = RegExp(r'^---\s*\n([\s\S]*?)\n---\s*\n');
+    final match = frontmatterRegex.firstMatch(content);
+
+    if (match != null) {
+      // Update YAML
+      String yaml = match.group(1)!;
+      if (yaml.contains('title:')) {
+        yaml = yaml.replaceFirst(RegExp(r'title:.*'), 'title: $newTitle');
+      } else {
+        yaml = 'title: $newTitle\n$yaml';
+      }
+      content = content.replaceRange(match.start, match.end, '---\n$yaml\n---\n');
+    } else {
+      // Update H1
+      final RegExp h1Regex = RegExp(r'^#\s+(.*)$', multiLine: true);
+      if (h1Regex.hasMatch(content)) {
+        content = content.replaceFirst(h1Regex, '# $newTitle');
+      } else {
+        content = '# $newTitle\n\n$content';
+      }
+    }
+
+    // 2. Save
+    _editorController.text = content;
+    noteService.manualSaveCurrentNote(content);
+    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Metadata updated")));
   }
 
   Widget _buildPropertyField(String label, String value) {
@@ -580,6 +659,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildTagsSidebarList(BuildContext context, NoteService noteService) {
     const textMuted = Color(0xFF8C8C8C);
     const textMain = Color(0xFFF4F1EA);
+    const accent = Color(0xFFD93025);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -593,17 +673,28 @@ class _HomeScreenState extends State<HomeScreen> {
           child: ListView(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 24),
-            children: noteService.allTags.keys.map((tag) => Center(
-              child: Container(
-                margin: const EdgeInsets.only(right: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF242424),
-                  borderRadius: BorderRadius.circular(4),
+            children: noteService.allTags.keys.map((tag) {
+              final isFiltered = noteService.filterTag == tag;
+              return Center(
+                child: InkWell(
+                  onTap: () => noteService.toggleTagFilter(tag),
+                  child: Container(
+                    margin: const EdgeInsets.only(right: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: isFiltered ? accent.withOpacity(0.2) : const Color(0xFF242424),
+                      borderRadius: BorderRadius.circular(4),
+                      border: isFiltered ? Border.all(color: accent) : null,
+                    ),
+                    child: Text("#$tag", style: GoogleFonts.jetBrainsMono(
+                      color: isFiltered ? textMain : textMain.withOpacity(0.7), 
+                      fontSize: 10,
+                      fontWeight: isFiltered ? FontWeight.bold : FontWeight.normal
+                    )),
+                  ),
                 ),
-                child: Text("#$tag", style: GoogleFonts.jetBrainsMono(color: textMain, fontSize: 10)),
-              ),
-            )).toList(),
+              );
+            }).toList(),
           ),
         ),
         const Divider(color: Color(0xFF2A2A2A), height: 32, indent: 24, endIndent: 24),

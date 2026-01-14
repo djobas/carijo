@@ -79,6 +79,20 @@ class GitService extends ChangeNotifier {
     }
   }
 
+  Future<String> getFileDiff(String path, String workingDir) async {
+    try {
+      // Show both staged and unstaged changes relative to HEAD
+      return await _runGit(['diff', 'HEAD', '--', path], workingDir);
+    } catch (e) {
+      // If file is new and not in HEAD, use --no-index or just show as new
+      try {
+        return await _runGit(['diff', '--no-index', '/dev/null', path], workingDir);
+      } catch (_) {
+        return "New file: $path";
+      }
+    }
+  }
+
   Future<String> _runGit(List<String> args, String workingDir) async {
     final result = await Process.run('git', args, workingDirectory: workingDir);
     if (result.exitCode != 0) {

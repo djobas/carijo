@@ -28,16 +28,30 @@ class NoteService extends ChangeNotifier {
   bool _isLoading = true;
   Map<String, List<Note>> _backlinks = {};
   Map<String, List<Note>> _allTags = {};
+  String? _filterTag;
   final Set<String> _autoSaveEnabledPaths = {};
 
   String? get notesPath => _notesPath;
-  List<Note> get notes => _notes;
+  List<Note> get notes {
+    if (_filterTag == null) return _notes;
+    return _notes.where((n) => n.tags.contains(_filterTag)).toList();
+  }
   Note? get selectedNote => _selectedNote;
   bool get isLoading => _isLoading;
   Map<String, List<Note>> get backlinks => _backlinks;
   Map<String, List<Note>> get allTags => _allTags;
+  String? get filterTag => _filterTag;
   
   bool isAutoSaveEnabled(String path) => _autoSaveEnabledPaths.contains(path);
+
+  void toggleTagFilter(String? tag) {
+    if (_filterTag == tag) {
+      _filterTag = null;
+    } else {
+      _filterTag = tag;
+    }
+    notifyListeners();
+  }
 
   NoteService() {
     _init();

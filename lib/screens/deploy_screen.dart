@@ -14,6 +14,11 @@ class DeployScreen extends StatefulWidget {
 class _DeployScreenState extends State<DeployScreen> {
   List<GitFile> _gitFiles = [];
   bool _isLoading = false;
+  
+  // Diff View State
+  String? _selectedFilePath;
+  String? _diffContent;
+  bool _isDiffLoading = false;
 
   @override
   void initState() {
@@ -34,6 +39,32 @@ class _DeployScreenState extends State<DeployScreen> {
       });
     } else {
       setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _fetchDiff(String path) async {
+    final noteService = Provider.of<NoteService>(context, listen: false);
+    final gitService = Provider.of<GitService>(context, listen: false);
+    
+    if (noteService.notesPath == null) return;
+
+    setState(() {
+      _selectedFilePath = path;
+      _isDiffLoading = true;
+      _diffContent = null;
+    });
+
+    try {
+      final diff = await gitService.getFileDiff(path, noteService.notesPath!);
+      setState(() {
+        _diffContent = diff;
+        _isDiffLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _diffContent = "Error loading diff: $e";
+        _isDiffLoading = false;
+      });
     }
   }
 
@@ -108,7 +139,9 @@ class _DeployScreenState extends State<DeployScreen> {
           Expanded(
             child: Stack(
               children: [
-                if (gitService.lastError != null)
+                if (_isDiffLoading)
+                  const Center(child: CircularProgressIndicator(color: accent))
+                else if (gitService.lastError != null)
                   Center(
                     child: Container(
                       padding: const EdgeInsets.all(24),
@@ -121,9 +154,51 @@ class _DeployScreenState extends State<DeployScreen> {
                       child: SelectableText(gitService.lastError!, style: GoogleFonts.jetBrainsMono(color: accent, fontSize: 12)),
                     ),
                   )
+                else if (_diffContent != null)
+                  Padding(
+                    padding: const EdgeInsets.all(32.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(_selectedFilePath ?? "", style: GoogleFonts.jetBrainsMono(color: textMuted, fontSize: 12)),
+                        const SizedBox(height: 16),
+                        Expanded(
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF111111),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: borderColor),
+                            ),
+                            child: SingleChildScrollView(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: _diffContent!.split('\n').map((line) {
+                                  Color color = textMain;
+                                  if (line.startsWith('+')) color = Colors.greenAccent;
+                                  if (line.startsWith('-')) color = accent;
+                                  if (line.startsWith('@@')) color = textMuted;
+
+                                  return Text(line, style: GoogleFonts.jetBrainsMono(color: color, fontSize: 12, height: 1.4));
+                                }).toList(),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
                 else
                   Center(
-                    child: Text("Select a file to view diff (Coming Soon)", style: GoogleFonts.jetBrainsMono(color: textMuted)),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.compare_arrows, size: 48, color: borderColor),
+                        const SizedBox(height: 16),
+                        Text("Select a file to review changes", style: GoogleFonts.jetBrainsMono(color: textMuted)),
+                      ],
+                    ),
                   ),
                   
                 Positioned(
@@ -179,32 +254,37 @@ class _DeployScreenState extends State<DeployScreen> {
     const accent = Color(0xFFD93025);
     const surface = Color(0xFF1F1F1F);
     
+    final isSelected = _selectedFilePath == file.path;
+
     return InkWell(
-      onTap: () async {
-        await Provider.of<GitService>(context, listen: false)
-            .toggleStaging(file.path, !file.isStaged, workingDir);
-        _refreshStatus();
-      },
+      onTap: () => _fetchDiff(file.path),
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: file.isStaged ? surface : Colors.transparent,
+          color: isSelected ? surface : Colors.transparent,
           borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: file.isStaged ? accent.withOpacity(0.3) : Colors.transparent),
+          border: Border.all(color: isSelected ? accent.withOpacity(0.3) : Colors.transparent),
         ),
         child: Row(
           children: [
-            Icon(
-              file.isStaged ? Icons.check_box : Icons.check_box_outline_blank, 
-              color: file.isStaged ? accent : textMuted, 
-              size: 18
+            InkWell(
+              onTap: () async {
+                await Provider.of<GitService>(context, listen: false)
+                    .toggleStaging(file.path, !file.isStaged, workingDir);
+                _refreshStatus();
+              },
+              child: Icon(
+                file.isStaged ? Icons.check_box : Icons.check_box_outline_blank, 
+                color: file.isStaged ? accent : textMuted, 
+                size: 18
+              ),
             ),
             const SizedBox(width: 12),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(file.path.split('/').last, style: GoogleFonts.jetBrainsMono(color: textMain, fontWeight: FontWeight.w500, fontSize: 13)),
+                Text(file.path.split('/').last, style: GoogleFonts.jetBrainsMono(color: textMain, fontWeight: isSelected ? FontWeight.bold : FontWeight.w500, fontSize: 13)),
                 Text(file.status.toUpperCase(), style: GoogleFonts.jetBrainsMono(color: textMuted, fontSize: 9, letterSpacing: 1)),
               ],
             )
