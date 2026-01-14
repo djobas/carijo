@@ -25,6 +25,8 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
   final TextEditingController _tagsController = TextEditingController();
+  final TextEditingController _categoryController = TextEditingController();
+  final TextEditingController _slugController = TextEditingController();
   bool _isPublished = false;
   bool _isEditing = true;
   String? _lastSelectedPath;
@@ -96,6 +98,8 @@ class _HomeScreenState extends State<HomeScreen> {
       _titleController.text = selectedNote.title;
       _tagsController.text = selectedNote.tags.join(', ');
       _isPublished = selectedNote.isPublished;
+      _categoryController.text = selectedNote.category ?? '';
+      _slugController.text = selectedNote.slug ?? '';
       _lastSelectedPath = selectedNote.path;
       _editorController.addListener(_onEditorChanged);
     } else if (selectedNote == null) {
@@ -103,6 +107,8 @@ class _HomeScreenState extends State<HomeScreen> {
       _editorController.clear();
       _titleController.clear();
       _tagsController.clear();
+      _categoryController.clear();
+      _slugController.clear();
       _isPublished = false;
     }
   }
@@ -582,7 +588,36 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                
+                Text("CATEGORY", style: GoogleFonts.spaceGrotesk(color: textMuted, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _categoryController,
+                  style: GoogleFonts.jetBrainsMono(color: textMain, fontSize: 13),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    hintText: "Ex: Blog, Projects",
+                    hintStyle: TextStyle(color: textMuted.withOpacity(0.5)),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                    enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: borderColor)),
+                    focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: accent)),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Text("CUSTOM SLUG", style: GoogleFonts.spaceGrotesk(color: textMuted, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _slugController,
+                  style: GoogleFonts.jetBrainsMono(color: textMain, fontSize: 13),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    hintText: "seo-friendly-slug",
+                    hintStyle: TextStyle(color: textMuted.withOpacity(0.5)),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                    enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: borderColor)),
+                    focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: accent)),
+                  ),
+                ),
+                const SizedBox(height: 24),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -930,6 +965,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final newTitle = _titleController.text;
     final tagsList = _tagsController.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
     final published = _isPublished;
+    final category = _categoryController.text.trim();
+    final slug = _slugController.text.trim();
     
     String content = _editorController.text;
 
@@ -964,11 +1001,29 @@ class _HomeScreenState extends State<HomeScreen> {
       } else {
         yaml = 'published: $published\n$yaml';
       }
+
+      // Category
+      if (yaml.contains(RegExp(r'^category:', multiLine: true))) {
+        yaml = yaml.replaceFirst(RegExp(r'^category:.*', multiLine: true), 'category: $category');
+      } else if (category.isNotEmpty) {
+        yaml = 'category: $category\n$yaml';
+      }
+
+      // Slug
+      if (yaml.contains(RegExp(r'^slug:', multiLine: true))) {
+        yaml = yaml.replaceFirst(RegExp(r'^slug:.*', multiLine: true), 'slug: $slug');
+      } else if (slug.isNotEmpty) {
+        yaml = 'slug: $slug\n$yaml';
+      }
       
       content = content.replaceRange(match.start, match.end, '---\n$yaml\n---\n');
     } else {
       // No frontmatter, create it
-      final String newFrontmatter = '---\ntitle: $newTitle\ntags: $tagsYaml\npublished: $published\n---\n\n';
+      String yamlContent = 'title: $newTitle\ntags: $tagsYaml\npublished: $published';
+      if (category.isNotEmpty) yamlContent += '\ncategory: $category';
+      if (slug.isNotEmpty) yamlContent += '\nslug: $slug';
+      
+      final String newFrontmatter = '---\n$yamlContent\n---\n\n';
       
       // Remove existing H1 if it was the source of the title
       final RegExp h1Regex = RegExp(r'^#\s+.*$', multiLine: true);

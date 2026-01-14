@@ -68,6 +68,8 @@ class SupabaseService extends ChangeNotifier {
         'tags': note.tags,
         'metadata': note.metadata,
         'is_published': note.isPublished,
+        'category': note.category,
+        'slug': note.slug,
       }, onConflict: 'path');
 
     } catch (e) {
@@ -97,6 +99,8 @@ class SupabaseService extends ChangeNotifier {
         'tags': note.tags,
         'metadata': note.metadata,
         'is_published': note.isPublished,
+        'category': note.category,
+        'slug': note.slug,
       }).toList();
 
       await client.from('notes').upsert(data, onConflict: 'path');
