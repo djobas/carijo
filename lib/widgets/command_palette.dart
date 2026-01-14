@@ -38,20 +38,24 @@ class _CommandPaletteState extends State<CommandPalette> {
   }
 
   void _loadActions(String query) {
+    final noteService = Provider.of<NoteService>(context, listen: false);
+
     if (widget.actions != null) {
+      final scoredActions = widget.actions!
+          .map((a) => MapEntry(a, noteService.fuzzyScore(query, a.label)))
+          .where((e) => e.value > 0)
+          .toList();
+      scoredActions.sort((a, b) => b.value.compareTo(a.value));
+      
       setState(() {
-        _filteredActions = widget.actions!
-            .where((a) => a.label.toLowerCase().contains(query.toLowerCase()))
-            .toList();
+        _filteredActions = scoredActions.map((e) => e.key).toList();
         _selectedIndex = 0;
       });
       return;
     }
 
     // Default actions if none provided
-    final noteService = Provider.of<NoteService>(context, listen: false);
-    
-    final List<CommandAction> defaults = [
+    final List<CommandAction> staticCommands = [
       CommandAction(label: "New Note", icon: Icons.add, onAction: () => noteService.createNewNote()),
       CommandAction(label: "Daily Note", icon: Icons.calendar_today, onAction: () => noteService.openDailyNote()),
       CommandAction(label: "Graph View", icon: Icons.hub, onAction: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GraphViewScreen(notes: noteService.notes)))),
@@ -59,10 +63,17 @@ class _CommandPaletteState extends State<CommandPalette> {
       CommandAction(label: "Settings", icon: Icons.settings, onAction: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()))),
     ];
 
-    // Also add note search results if they match
+    final scoredStatic = staticCommands
+        .map((c) => MapEntry(c, noteService.fuzzyScore(query, c.label)))
+        .where((e) => e.value > 0)
+        .toList();
+
+    // Notes already come sorted by fuzzyScore from noteService.searchNotes
     final matchingNotes = noteService.searchNotes(query);
+    final List<CommandAction> items = scoredStatic.map((e) => e.key).toList();
+    
     for (var note in matchingNotes) {
-      defaults.add(CommandAction(
+      items.add(CommandAction(
         label: "Open: ${note.title}", 
         icon: Icons.description, 
         onAction: () => noteService.selectNote(note)
@@ -70,7 +81,7 @@ class _CommandPaletteState extends State<CommandPalette> {
     }
 
     setState(() {
-      _filteredActions = defaults.where((a) => a.label.toLowerCase().contains(query.toLowerCase())).toList();
+      _filteredActions = items;
       _selectedIndex = 0;
     });
   }

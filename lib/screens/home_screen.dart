@@ -989,21 +989,34 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         const SizedBox(height: 16),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: backlinks.map((note) => InkWell(
+        Column(
+          children: backlinks.map((match) => InkWell(
             onTap: () {
-              noteService.selectNote(note);
-              _editorController.text = note.content;
+              noteService.selectNote(match.note);
+              _editorController.text = match.note.content;
             },
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              width: double.infinity,
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
+                color: const Color(0xFF161616),
                 border: Border.all(color: const Color(0xFF2A2A2A)),
                 borderRadius: BorderRadius.circular(4),
               ),
-              child: Text(note.title, style: GoogleFonts.jetBrainsMono(color: textMain, fontSize: 12)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(match.note.title, style: GoogleFonts.jetBrainsMono(color: textMain, fontSize: 12, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 6),
+                  Text(
+                    match.snippet, 
+                    style: GoogleFonts.jetBrainsMono(color: textMuted, fontSize: 10, height: 1.4),
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
             ),
           )).toList(),
         ),

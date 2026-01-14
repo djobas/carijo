@@ -40,6 +40,13 @@ class NoteFolder {
   });
 }
 
+class BacklinkMatch {
+  final Note note;
+  final String snippet;
+
+  BacklinkMatch({required this.note, required this.snippet});
+}
+
 class NoteService extends ChangeNotifier {
   String? _notesPath;
   List<Note> _notes = [];
@@ -280,26 +287,89 @@ class NoteService extends ChangeNotifier {
     }
   }
 
-  List<Note> getBacklinksFor(Note note) {
-    // Check by title and by filename (without .md)
+  List<BacklinkMatch> getBacklinksFor(Note note) {
     final filename = note.path.split(Platform.pathSeparator).last.replaceAll('.md', '');
-    final linksById = _backlinks[note.title] ?? [];
-    final linksByFile = _backlinks[filename] ?? [];
-    
-    // Combine and unique
-    final allLinks = [...linksById, ...linksByFile];
+    final List<Note> linkedNotes = [];
     final seenPaths = <String>{};
-    return allLinks.where((n) => seenPaths.add(n.path)).toList();
+    
+    final titlesToMatch = [note.title, filename];
+    
+    final results = <BacklinkMatch>[];
+    
+    for (var otherNote in _notes) {
+      if (otherNote.path == note.path) continue;
+      
+      for (var title in titlesToMatch) {
+        final linkPattern = '[[${title}]]';
+        if (otherNote.content.contains(linkPattern)) {
+          // Extract snippet
+          final index = otherNote.content.indexOf(linkPattern);
+          final start = (index - 50).clamp(0, otherNote.content.length);
+          final end = (index + linkPattern.length + 50).clamp(0, otherNote.content.length);
+          
+          String snippet = otherNote.content.substring(start, end).replaceAll('\n', ' ');
+          if (start > 0) snippet = '...$snippet';
+          if (end < otherNote.content.length) snippet = '$snippet...';
+          
+          results.add(BacklinkMatch(note: otherNote, snippet: snippet));
+          break; // Found a link in this note, move to next note
+        }
+      }
+    }
+    
+    return results;
   }
 
   List<Note> searchNotes(String query) {
     if (query.isEmpty) return [];
     
-    return _notes.where((note) {
-      final inTitle = note.title.toLowerCase().contains(query.toLowerCase());
-      final inContent = note.content.toLowerCase().contains(query.toLowerCase());
-      return inTitle || inContent;
-    }).toList();
+    final results = <MapEntry<Note, double>>[];
+    
+    for (var note in _notes) {
+      double score = fuzzyScore(query, note.title) * 2.0; // Title matches weigh more
+      score = score > 0 ? score : fuzzyScore(query, note.content);
+      
+      if (score > 0) {
+        results.add(MapEntry(note, score));
+      }
+    }
+    
+    results.sort((a, b) => b.value.compareTo(a.value));
+    return results.map((e) => e.key).toList();
+  }
+
+  double fuzzyScore(String query, String target) {
+    if (query.isEmpty) return 1.0;
+    query = query.toLowerCase();
+    target = target.toLowerCase();
+    
+    if (target.contains(query)) {
+      // Bonus if it starts with the query
+      if (target.startsWith(query)) return 1.0;
+      return 0.8;
+    }
+    
+    int queryIdx = 0;
+    int targetIdx = 0;
+    int matches = 0;
+    int gaps = 0;
+    
+    while (queryIdx < query.length && targetIdx < target.length) {
+      if (query[queryIdx] == target[targetIdx]) {
+        queryIdx++;
+        matches++;
+      } else {
+        gaps++;
+      }
+      targetIdx++;
+    }
+    
+    if (matches == query.length) {
+      // All chars found in order. Score decreases with more gaps.
+      return 0.5 / (1 + gaps * 0.1);
+    }
+    
+    return 0.0;
   }
 
   void selectNote(Note note) {
