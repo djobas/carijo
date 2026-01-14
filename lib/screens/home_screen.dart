@@ -17,6 +17,12 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _editorController = TextEditingController();
   bool _isEditing = true;
   String? _lastSelectedPath;
+  
+  // Autocomplete state
+  bool _showAutocomplete = false;
+  String _autocompleteQuery = "";
+  int _autocompleteCursorPos = -1;
+  bool _showProperties = false;
 
   @override
   void initState() {
@@ -26,9 +32,38 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _onEditorChanged() {
     final noteService = Provider.of<NoteService>(context, listen: false);
+    final text = _editorController.text;
+    final selection = _editorController.selection;
+
     if (noteService.selectedNote != null && 
-        _editorController.text != noteService.selectedNote!.content) {
-      noteService.updateCurrentNote(_editorController.text);
+        text != noteService.selectedNote!.content) {
+      noteService.updateCurrentNote(text);
+    }
+
+    // Autocomplete Trigger Detection
+    if (selection.isCollapsed && selection.start >= 2) {
+      final lastTwo = text.substring(selection.start - 2, selection.start);
+      if (lastTwo == '[[' && !_showAutocomplete) {
+        setState(() {
+          _showAutocomplete = true;
+          _autocompleteCursorPos = selection.start;
+          _autocompleteQuery = "";
+        });
+      } else if (_showAutocomplete) {
+        // Update query or close if cursor moved back or link closed
+        if (selection.start < _autocompleteCursorPos) {
+          setState(() => _showAutocomplete = false);
+        } else {
+          final query = text.substring(_autocompleteCursorPos, selection.start);
+          if (query.contains('\n') || query.contains(']]')) {
+            setState(() => _showAutocomplete = false);
+          } else {
+            setState(() => _autocompleteQuery = query);
+          }
+        }
+      }
+    } else if (_showAutocomplete) {
+      setState(() => _showAutocomplete = false);
     }
   }
 
@@ -111,6 +146,9 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ),
                     ),
+                    // Tags Section Mock
+                    if (noteService.allTags.isNotEmpty)
+                      _buildTagsSidebarList(context, noteService),
                     // Note List
                     Expanded(
                       child: Consumer<NoteService>(
@@ -235,6 +273,12 @@ class _HomeScreenState extends State<HomeScreen> {
                                 tooltip: "Delete Note",
                               ),
                               const Spacer(),
+                              IconButton(
+                                onPressed: () => setState(() => _showProperties = !_showProperties), 
+                                icon: Icon(_showProperties ? Icons.info : Icons.info_outline, color: _showProperties ? accent : textMuted, size: 20),
+                                tooltip: "Show Properties",
+                              ),
+                              const SizedBox(width: 12),
                               Text("Mode: ${_isEditing ? 'EDIT' : 'PREVIEW'}", style: GoogleFonts.jetBrainsMono(color: textMuted, fontSize: 10)),
                               const SizedBox(width: 12),
                               Switch(
@@ -249,46 +293,54 @@ class _HomeScreenState extends State<HomeScreen> {
                           ),
                         ),
                         Expanded(
-                          child: _isEditing 
-                          ? Padding(
-                            padding: const EdgeInsets.all(32.0),
-                            child: TextField(
-                                controller: _editorController,
-                                maxLines: null,
-                                expands: true,
-                                style: GoogleFonts.jetBrainsMono(color: textMain, fontSize: 16, height: 1.6),
-                                cursorColor: accent,
-                                decoration: const InputDecoration(border: InputBorder.none),
-                              ),
-                          )
-                          : SingleChildScrollView(
-                            padding: const EdgeInsets.all(32),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                MarkdownBody(
-                                  data: _editorController.text,
-                                  onTapLink: (text, href, title) {
-                                    if (href != null) {
-                                      _navigateToNote(href);
-                                    } else {
-                                      _navigateToNote(text);
-                                    }
-                                  },
-                                  styleSheet: MarkdownStyleSheet(
-                                    p: GoogleFonts.spaceGrotesk(color: textMain.withOpacity(0.9), fontSize: 16, height: 1.6),
-                                    h1: GoogleFonts.spaceGrotesk(color: textMain, fontSize: 32, fontWeight: FontWeight.bold),
-                                    h2: GoogleFonts.spaceGrotesk(color: textMain, fontSize: 24, fontWeight: FontWeight.bold),
-                                    code: GoogleFonts.jetBrainsMono(backgroundColor: const Color(0xFF242424), color: accent),
-                                    codeblockDecoration: BoxDecoration(color: const Color(0xFF111111), borderRadius: BorderRadius.circular(4)),
+                          child: Stack(
+                            children: [
+                              if (_isEditing) 
+                                Padding(
+                                  padding: const EdgeInsets.all(32.0),
+                                  child: TextField(
+                                    controller: _editorController,
+                                    maxLines: null,
+                                    expands: true,
+                                    style: GoogleFonts.jetBrainsMono(color: textMain, fontSize: 16, height: 1.6),
+                                    cursorColor: accent,
+                                    decoration: const InputDecoration(border: InputBorder.none),
+                                  ),
+                                )
+                              else
+                                SingleChildScrollView(
+                                  padding: const EdgeInsets.all(32),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      MarkdownBody(
+                                        data: _editorController.text,
+                                        onTapLink: (text, href, title) {
+                                          if (href != null) {
+                                            _navigateToNote(href);
+                                          } else {
+                                            _navigateToNote(text);
+                                          }
+                                        },
+                                        styleSheet: MarkdownStyleSheet(
+                                          p: GoogleFonts.spaceGrotesk(color: textMain.withOpacity(0.9), fontSize: 16, height: 1.6),
+                                          h1: GoogleFonts.spaceGrotesk(color: textMain, fontSize: 32, fontWeight: FontWeight.bold),
+                                          h2: GoogleFonts.spaceGrotesk(color: textMain, fontSize: 24, fontWeight: FontWeight.bold),
+                                          code: GoogleFonts.jetBrainsMono(backgroundColor: const Color(0xFF242424), color: accent),
+                                          codeblockDecoration: BoxDecoration(color: const Color(0xFF111111), borderRadius: BorderRadius.circular(4)),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 64),
+                                      _buildBacklinksSection(context, noteService),
+                                    ],
                                   ),
                                 ),
-                            const SizedBox(height: 64),
-                            _buildBacklinksSection(context, noteService),
-                          ],
+                              
+                              if (_showAutocomplete)
+                                _buildAutocompleteOverlay(context, noteService),
+                            ],
+                          ),
                         ),
-                      ),
-                    ),
                     // Status Bar
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
@@ -316,10 +368,168 @@ class _HomeScreenState extends State<HomeScreen> {
                 );
               },
             ),
-          )
-            ],
           ),
+          if (_showProperties)
+            Consumer<NoteService>(
+              builder: (context, noteService, _) => _buildPropertiesSidebar(context, noteService),
+            ),
+        ],
+      ),
+    ),
+  ),
+);
+}
+
+  Widget _buildAutocompleteOverlay(BuildContext context, NoteService noteService) {
+    final filteredNotes = noteService.notes.where((n) => 
+      n.title.toLowerCase().contains(_autocompleteQuery.toLowerCase())
+    ).take(5).toList();
+
+    if (filteredNotes.isEmpty) return const SizedBox();
+
+    return Positioned(
+      top: 40,
+      left: 60,
+      child: Container(
+        width: 280,
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E1E1E),
+          border: Border.all(color: const Color(0xFF2A2A2A)),
+          borderRadius: BorderRadius.circular(4),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 8)]
         ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: filteredNotes.map((note) => InkWell(
+            onTap: () => _injectSelection(note.title),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFF2A2A2A)))),
+              child: Row(
+                children: [
+                  const Icon(Icons.article_outlined, color: Color(0xFF8C8C8C), size: 16),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(note.title, 
+                      maxLines: 1, 
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.jetBrainsMono(color: const Color(0xFFF4F1EA), fontSize: 13)
+                    )
+                  ),
+                ],
+              ),
+            ),
+          )).toList(),
+        ),
+      ),
+    );
+  }
+
+  void _injectSelection(String title) {
+    final text = _editorController.text;
+    final start = _autocompleteCursorPos;
+    final end = _editorController.selection.start;
+    
+    // Replace the query part from [[ onwards
+    final newText = text.replaceRange(start, end, "$title]]");
+    
+    _editorController.removeListener(_onEditorChanged);
+    _editorController.text = newText;
+    _editorController.selection = TextSelection.collapsed(offset: start + title.length + 2);
+    _editorController.addListener(_onEditorChanged);
+    
+    // Sync with service
+    Provider.of<NoteService>(context, listen: false).updateCurrentNote(newText);
+    
+    setState(() => _showAutocomplete = false);
+  }
+
+  Widget _buildPropertiesSidebar(BuildContext context, NoteService noteService) {
+    final note = noteService.selectedNote;
+    if (note == null) return const SizedBox();
+    
+    const sidebarWidth = 300.0;
+    const bgSidebar = Color(0xFF161616);
+    const borderColor = Color(0xFF2A2A2A);
+    const textMain = Color(0xFFF4F1EA);
+    const textMuted = Color(0xFF8C8C8C);
+
+    return Container(
+      width: sidebarWidth,
+      decoration: const BoxDecoration(
+        color: bgSidebar,
+        border: Border(left: BorderSide(color: borderColor)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Row(
+              children: [
+                Text("Properties", style: GoogleFonts.spaceGrotesk(color: textMain, fontSize: 18, fontWeight: FontWeight.bold)),
+                const Spacer(),
+                IconButton(
+                  onPressed: () => setState(() => _showProperties = false),
+                  icon: const Icon(Icons.close, color: textMuted, size: 18),
+                )
+              ],
+            ),
+          ),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              children: [
+                _buildPropertyField("Title", note.title),
+                _buildPropertyField("Path", note.path),
+                _buildPropertyField("Modified", note.modified.toString().split('.')[0]),
+                const SizedBox(height: 24),
+                Text("TAGS", style: GoogleFonts.spaceGrotesk(color: textMuted, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
+                const SizedBox(height: 8),
+                if (note.tags.isEmpty)
+                   Text("No tags found", style: GoogleFonts.jetBrainsMono(color: textMuted, fontSize: 12, fontStyle: FontStyle.italic))
+                else
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: note.tags.map((tag) => Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF242424),
+                        borderRadius: BorderRadius.circular(4),
+                        border: Border.all(color: borderColor),
+                      ),
+                      child: Text("#$tag", style: GoogleFonts.jetBrainsMono(color: textMain, fontSize: 11)),
+                    )).toList(),
+                  ),
+                if (note.metadata.isNotEmpty) ...[
+                  const SizedBox(height: 32),
+                  Text("FRONTMATTER", style: GoogleFonts.spaceGrotesk(color: textMuted, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
+                  const SizedBox(height: 12),
+                  ...note.metadata.entries.map((e) => _buildPropertyField(e.key, e.value.toString())),
+                ]
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPropertyField(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label.toUpperCase(), style: GoogleFonts.spaceGrotesk(color: const Color(0xFF8C8C8C), fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+          const SizedBox(height: 6),
+          Text(value, 
+            style: GoogleFonts.jetBrainsMono(color: const Color(0xFFF4F1EA), fontSize: 12),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
       ),
     );
   }
@@ -363,6 +573,40 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           )).toList(),
         ),
+      ],
+    );
+  }
+
+  Widget _buildTagsSidebarList(BuildContext context, NoteService noteService) {
+    const textMuted = Color(0xFF8C8C8C);
+    const textMain = Color(0xFFF4F1EA);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+          child: Text("TAGS", style: GoogleFonts.spaceGrotesk(color: textMuted, fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+        ),
+        SizedBox(
+          height: 80,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            children: noteService.allTags.keys.map((tag) => Center(
+              child: Container(
+                margin: const EdgeInsets.only(right: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF242424),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text("#$tag", style: GoogleFonts.jetBrainsMono(color: textMain, fontSize: 10)),
+              ),
+            )).toList(),
+          ),
+        ),
+        const Divider(color: Color(0xFF2A2A2A), height: 32, indent: 24, endIndent: 24),
       ],
     );
   }

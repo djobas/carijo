@@ -9,6 +9,7 @@ class Note {
   final String path;
   final DateTime modified;
   final Map<String, dynamic> metadata;
+  final List<String> tags;
 
   Note({
     required this.title, 
@@ -16,6 +17,7 @@ class Note {
     required this.path, 
     required this.modified,
     this.metadata = const {},
+    this.tags = const [],
   });
 }
 
@@ -25,6 +27,7 @@ class NoteService extends ChangeNotifier {
   Note? _selectedNote;
   bool _isLoading = true;
   Map<String, List<Note>> _backlinks = {};
+  Map<String, List<Note>> _allTags = {};
   final Set<String> _autoSaveEnabledPaths = {};
 
   String? get notesPath => _notesPath;
@@ -32,6 +35,7 @@ class NoteService extends ChangeNotifier {
   Note? get selectedNote => _selectedNote;
   bool get isLoading => _isLoading;
   Map<String, List<Note>> get backlinks => _backlinks;
+  Map<String, List<Note>> get allTags => _allTags;
   
   bool isAutoSaveEnabled(String path) => _autoSaveEnabledPaths.contains(path);
 
@@ -82,6 +86,7 @@ class NoteService extends ChangeNotifier {
               path: entity.path,
               modified: stat.modified,
               metadata: noteData['metadata'],
+              tags: noteData['tags'],
             ));
           }
         }
@@ -97,7 +102,17 @@ class NoteService extends ChangeNotifier {
     }
 
     _isLoading = false;
+    _buildTags();
     notifyListeners();
+  }
+
+  void _buildTags() {
+    _allTags = {};
+    for (var note in _notes) {
+      for (var tag in note.tags) {
+        _allTags.putIfAbsent(tag, () => []).add(note);
+      }
+    }
   }
 
   void _buildBacklinks() {
@@ -205,17 +220,23 @@ class NoteService extends ChangeNotifier {
 
     final file = File(_selectedNote!.path);
     await file.writeAsString(newContent);
+    
+    // Re-parse to update title/tags in memory
+    final noteData = _parseNoteContent(newContent, file.uri.pathSegments.last);
+
     // Optimistic update
     final index = _notes.indexWhere((n) => n.path == _selectedNote!.path);
     if (index != -1) {
       _notes[index] = Note(
-        title: _notes[index].title,
+        title: noteData['title'],
         content: newContent,
         path: _notes[index].path,
         modified: DateTime.now(),
-        metadata: _notes[index].metadata,
+        metadata: noteData['metadata'],
+        tags: noteData['tags'],
       );
       _selectedNote = _notes[index];
+      _buildTags(); // Update global tags map
       notifyListeners();
     }
   }
@@ -243,6 +264,7 @@ class NoteService extends ChangeNotifier {
   Map<String, dynamic> _parseNoteContent(String content, String filename) {
     String title = filename;
     Map<String, dynamic> metadata = {};
+    Set<String> tags = {};
 
     // 1. Try Frontmatter
     final RegExp frontmatterRegex = RegExp(r'^---\s*\n([\s\S]*?)\n---\s*\n');
@@ -256,7 +278,14 @@ class NoteService extends ChangeNotifier {
           metadata = Map<String, dynamic>.from(yaml);
           if (metadata.containsKey('title')) {
             title = metadata['title'].toString();
-            return {'title': title, 'metadata': metadata};
+          }
+          if (metadata.containsKey('tags')) {
+            final dynamic yamlTags = metadata['tags'];
+            if (yamlTags is List) {
+              tags.addAll(yamlTags.map((t) => t.toString()));
+            } else if (yamlTags is String) {
+              tags.add(yamlTags);
+            }
           }
         }
       } catch (e) {
@@ -264,13 +293,26 @@ class NoteService extends ChangeNotifier {
       }
     }
 
-    // 2. Try H1
-    final RegExp h1Regex = RegExp(r'^#\s+(.*)$', multiLine: true);
-    final h1Match = h1Regex.firstMatch(content);
-    if (h1Match != null) {
-      title = h1Match.group(1)!.trim();
+    // 2. Try H1 for Title (if no Title in Frontmatter)
+    if (title == filename) {
+      final RegExp h1Regex = RegExp(r'^#\s+(.*)$', multiLine: true);
+      final h1Match = h1Regex.firstMatch(content);
+      if (h1Match != null) {
+        title = h1Match.group(1)!.trim();
+      }
     }
 
-    return {'title': title, 'metadata': metadata};
+    // 3. Extract #tags from content
+    final RegExp tagRegex = RegExp(r'#(\w+)');
+    final tagMatches = tagRegex.allMatches(content);
+    for (var m in tagMatches) {
+      tags.add(m.group(1)!);
+    }
+
+    return {
+      'title': title, 
+      'metadata': metadata, 
+      'tags': tags.toList(),
+    };
   }
 }
