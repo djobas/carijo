@@ -16,6 +16,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _editorController = TextEditingController();
   final TextEditingController _titleController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
   bool _isEditing = true;
   String? _lastSelectedPath;
   
@@ -143,17 +144,42 @@ class _HomeScreenState extends State<HomeScreen> {
                         ],
                       ),
                     ),
-                    // Search Mock
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: borderColor))),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1E1E1E),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: borderColor),
+                        ),
                         child: Row(
                           children: [
                             const Icon(Icons.search, color: textMuted, size: 18),
                             const SizedBox(width: 8),
-                            Text("Search notes...", style: GoogleFonts.jetBrainsMono(color: textMuted)),
+                            Expanded(
+                              child: TextField(
+                                controller: _searchController,
+                                onChanged: (value) => noteService.updateSearchQuery(value),
+                                style: GoogleFonts.jetBrainsMono(color: textMain, fontSize: 13),
+                                decoration: InputDecoration(
+                                  hintText: "Search notes...",
+                                  hintStyle: GoogleFonts.jetBrainsMono(color: textMuted),
+                                  border: InputBorder.none,
+                                  isDense: true,
+                                ),
+                              ),
+                            ),
+                            if (_searchController.text.isNotEmpty)
+                              IconButton(
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                                icon: const Icon(Icons.close, color: textMuted, size: 16),
+                                onPressed: () {
+                                  _searchController.clear();
+                                  noteService.updateSearchQuery("");
+                                },
+                              )
                           ],
                         ),
                       ),
@@ -545,6 +571,29 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                   child: Text("SAVE METADATA", style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.bold, fontSize: 12)),
                 ),
+                if (note.outgoingLinks.isNotEmpty) ...[
+                  const SizedBox(height: 32),
+                  Text("OUTGOING LINKS", style: GoogleFonts.spaceGrotesk(color: textMuted, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
+                  const SizedBox(height: 12),
+                  ...note.outgoingLinks.map((link) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: InkWell(
+                      onTap: () {
+                        _navigateToNote(link);
+                        setState(() => _showProperties = false);
+                      },
+                      child: Row(
+                        children: [
+                          const Icon(Icons.link, color: textMuted, size: 14),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(link, style: GoogleFonts.jetBrainsMono(color: accent, fontSize: 12), overflow: TextOverflow.ellipsis),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )),
+                ],
                 if (note.metadata.isNotEmpty) ...[
                   const SizedBox(height: 32),
                   Text("FRONTMATTER", style: GoogleFonts.spaceGrotesk(color: textMuted, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.1)),

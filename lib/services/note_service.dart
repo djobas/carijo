@@ -10,6 +10,7 @@ class Note {
   final DateTime modified;
   final Map<String, dynamic> metadata;
   final List<String> tags;
+  final List<String> outgoingLinks;
 
   Note({
     required this.title, 
@@ -18,6 +19,7 @@ class Note {
     required this.modified,
     this.metadata = const {},
     this.tags = const [],
+    this.outgoingLinks = const [],
   });
 }
 
@@ -29,20 +31,37 @@ class NoteService extends ChangeNotifier {
   Map<String, List<Note>> _backlinks = {};
   Map<String, List<Note>> _allTags = {};
   String? _filterTag;
+  String _searchQuery = "";
   final Set<String> _autoSaveEnabledPaths = {};
 
   String? get notesPath => _notesPath;
   List<Note> get notes {
-    if (_filterTag == null) return _notes;
-    return _notes.where((n) => n.tags.contains(_filterTag)).toList();
+    List<Note> filtered = _notes;
+    if (_filterTag != null) {
+      filtered = filtered.where((n) => n.tags.contains(_filterTag)).toList();
+    }
+    if (_searchQuery.isNotEmpty) {
+      final query = _searchQuery.toLowerCase();
+      filtered = filtered.where((n) => 
+        n.title.toLowerCase().contains(query) || 
+        n.content.toLowerCase().contains(query)
+      ).toList();
+    }
+    return filtered;
   }
   Note? get selectedNote => _selectedNote;
   bool get isLoading => _isLoading;
   Map<String, List<Note>> get backlinks => _backlinks;
   Map<String, List<Note>> get allTags => _allTags;
   String? get filterTag => _filterTag;
-  
+  String get searchQuery => _searchQuery;
+
   bool isAutoSaveEnabled(String path) => _autoSaveEnabledPaths.contains(path);
+
+  void updateSearchQuery(String query) {
+    _searchQuery = query;
+    notifyListeners();
+  }
 
   void toggleTagFilter(String? tag) {
     if (_filterTag == tag) {
@@ -101,6 +120,7 @@ class NoteService extends ChangeNotifier {
               modified: stat.modified,
               metadata: noteData['metadata'],
               tags: noteData['tags'],
+              outgoingLinks: noteData['outgoingLinks'],
             ));
           }
         }
@@ -248,6 +268,7 @@ class NoteService extends ChangeNotifier {
         modified: DateTime.now(),
         metadata: noteData['metadata'],
         tags: noteData['tags'],
+        outgoingLinks: noteData['outgoingLinks'],
       );
       _selectedNote = _notes[index];
       _buildTags(); // Update global tags map
@@ -323,10 +344,16 @@ class NoteService extends ChangeNotifier {
       tags.add(m.group(1)!);
     }
 
+    // 4. Extract outgoing links [[Title]]
+    final RegExp linkRegex = RegExp(r'\[\[(.*?)\]\]');
+    final linkMatches = linkRegex.allMatches(content);
+    final List<String> outgoingLinks = linkMatches.map((m) => m.group(1)!.trim()).toList();
+
     return {
       'title': title, 
       'metadata': metadata, 
       'tags': tags.toList(),
+      'outgoingLinks': outgoingLinks.toSet().toList(), // Deduplicate
     };
   }
 }

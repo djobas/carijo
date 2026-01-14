@@ -20,6 +20,8 @@ class _DeployScreenState extends State<DeployScreen> {
   String? _diffContent;
   bool _isDiffLoading = false;
 
+  final TextEditingController _commitController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
@@ -204,22 +206,60 @@ class _DeployScreenState extends State<DeployScreen> {
                 Positioned(
                   top: 20,
                   right: 20,
-                  child: ElevatedButton.icon(
-                    onPressed: (gitService.isSyncing || noteService.notesPath == null) 
-                      ? null 
-                      : () async {
-                          await gitService.pushToBlog(noteService.notesPath!);
-                          _refreshStatus();
-                        },
-                    icon: gitService.isSyncing 
-                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: textMain)) 
-                      : const Icon(Icons.cloud_upload),
-                    label: Text(gitService.isSyncing ? "SYNCING..." : "PUSH TO BLOG"),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: accent,
-                      foregroundColor: textMain,
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-                      textStyle: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.bold),
+                  child: Container(
+                    width: 400,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: surface,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: borderColor),
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 10)],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text("COMMIT MESSAGE", style: GoogleFonts.spaceGrotesk(color: textMuted, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _commitController,
+                          style: GoogleFonts.jetBrainsMono(color: textMain, fontSize: 12),
+                          maxLines: 3,
+                          decoration: InputDecoration(
+                            hintText: "What are you deploying?",
+                            hintStyle: GoogleFonts.jetBrainsMono(color: textMuted, fontSize: 12),
+                            fillColor: const Color(0xFF111111),
+                            filled: true,
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(4), borderSide: BorderSide.none),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton.icon(
+                          onPressed: (gitService.isSyncing || noteService.notesPath == null) 
+                            ? null 
+                            : () async {
+                                await gitService.pushToBlog(
+                                  noteService.notesPath!, 
+                                  commitMessage: _commitController.text.isNotEmpty ? _commitController.text : null
+                                );
+                                if (gitService.lastError == null) {
+                                  _commitController.clear();
+                                  _refreshStatus();
+                                }
+                              },
+                          icon: gitService.isSyncing 
+                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: textMain)) 
+                            : const Icon(Icons.cloud_upload),
+                          label: Text(gitService.isSyncing ? "SYNCING..." : "PUSH TO BLOG"),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: accent,
+                            foregroundColor: textMain,
+                            minimumSize: const Size(double.infinity, 48),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                            textStyle: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 )

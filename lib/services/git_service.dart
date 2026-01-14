@@ -15,7 +15,7 @@ class GitService extends ChangeNotifier {
   String? _lastError;
   String? get lastError => _lastError;
 
-  Future<void> pushToBlog(String workingDir) async {
+  Future<void> pushToBlog(String workingDir, {String? commitMessage}) async {
     _isSyncing = true;
     _lastError = null;
     notifyListeners();
@@ -24,9 +24,9 @@ class GitService extends ChangeNotifier {
       // 1. Stage all changes (simple flow for now)
       await _runGit(['add', '.'], workingDir);
       
-      // 2. Commit with timestamp
-      final timestamp = DateTime.now().toIso8601String();
-      await _runGit(['commit', '-m', 'Carijó Deploy: $timestamp'], workingDir);
+      // 2. Commit with provided message or timestamp
+      final message = commitMessage ?? "Carijó Deploy: ${DateTime.now().toIso8601String()}";
+      await _runGit(['commit', '-m', message], workingDir);
       
       // 3. Push
       await _runGit(['push'], workingDir);
