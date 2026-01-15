@@ -393,6 +393,22 @@ class NoteService extends ChangeNotifier {
     await saveNote(filename, defaultContent);
   }
 
+  Future<void> createFromTemplate(Note template, String newNoteTitle) async {
+    if (_notesPath == null) return;
+    
+    String content = template.content;
+    final now = DateTime.now();
+    final dateStr = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+    
+    content = content.replaceAll('{{title}}', newNoteTitle);
+    content = content.replaceAll('{{date}}', dateStr);
+    
+    // Also try to update title in frontmatter if it exists and uses a literal value
+    // (though usually templates should use {{title}})
+    
+    await saveNote(newNoteTitle, content);
+  }
+
   Future<void> openDailyNote() async {
     if (_notesPath == null) return;
 

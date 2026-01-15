@@ -8,6 +8,7 @@ import 'screens/settings_screen.dart';
 import 'components/quick_capture.dart';
 import 'widgets/command_palette.dart';
 import 'services/note_service.dart';
+import 'services/theme_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,6 +22,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => NoteService()),
         ChangeNotifierProvider(create: (_) => GitService()),
         ChangeNotifierProvider.value(value: supabaseService),
+        ChangeNotifierProvider(create: (_) => ThemeService()),
       ],
       child: const CarijoApp(),
     ),
@@ -32,13 +34,16 @@ class CarijoApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final themeService = Provider.of<ThemeService>(context);
+    final theme = themeService.theme;
+
     return MaterialApp(
       title: 'Carijó Notes',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF1A1A1A),
-        primaryColor: const Color(0xFFD93025),
+        scaffoldBackgroundColor: theme.bgMain,
+        primaryColor: theme.accent,
         useMaterial3: true,
       ),
       builder: (context, child) {

@@ -10,6 +10,7 @@ import 'graph_view_screen.dart';
 import 'deploy_screen.dart';
 import '../services/note_service.dart';
 import '../services/git_service.dart';
+import '../services/theme_service.dart';
 import '../widgets/command_palette.dart';
 import 'settings_screen.dart';
 
@@ -32,14 +33,6 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _lastSelectedPath;
   bool _showProperties = false;
   final Set<String> _expandedFolders = {};
-  
-  // Theme Constants
-  static const Color bgDark = Color(0xFF1A1A1A);
-  static const Color bgSidebar = Color(0xFF161616);
-  static const Color borderColor = Color(0xFF2A2A2A);
-  static const Color textMain = Color(0xFFF4F1EA);
-  static const Color textMuted = Color(0xFF8C8C8C);
-  static const Color accent = Color(0xFFD93025);
 
   // Autocomplete state
   bool _showAutocomplete = false;
@@ -116,6 +109,17 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final noteService = Provider.of<NoteService>(context);
+    final themeService = Provider.of<ThemeService>(context);
+    final theme = themeService.theme;
+
+    // Local theme variables to replace the removed constants
+    final bgDark = theme.bgMain;
+    final bgSidebar = theme.bgSidebar;
+    final borderColor = theme.borderColor;
+    final textMain = theme.textMain;
+    final textMuted = theme.textMuted;
+    final accent = theme.accent;
+
     _syncEditorWithSelection(noteService);
 
     return CallbackShortcuts(
@@ -159,13 +163,13 @@ class _HomeScreenState extends State<HomeScreen> {
                           if (noteService.filterTag != null)
                             IconButton(
                               onPressed: () => noteService.toggleTagFilter(null),
-                              icon: const Icon(Icons.close, color: textMuted, size: 18),
+                              icon: Icon(Icons.close, color: textMuted, size: 18),
                               tooltip: "Clear Filter",
                             )
                           else ...[
                             IconButton(
                               onPressed: () => noteService.openDailyNote(),
-                              icon: const Icon(Icons.calendar_today, color: textMuted, size: 18),
+                              icon: Icon(Icons.calendar_today, color: textMuted, size: 18),
                               tooltip: "Daily Note",
                             ),
                             IconButton(
@@ -173,12 +177,12 @@ class _HomeScreenState extends State<HomeScreen> {
                                 context, 
                                 MaterialPageRoute(builder: (_) => GraphViewScreen(notes: noteService.notes))
                               ),
-                              icon: const Icon(Icons.hub, color: textMuted, size: 18),
+                              icon: Icon(Icons.hub, color: textMuted, size: 18),
                               tooltip: "Graph View",
                             ),
                             IconButton(
                               onPressed: () => _showNewNoteOptions(context, noteService), 
-                              icon: const Icon(Icons.add, color: textMuted, size: 20),
+                              icon: Icon(Icons.add, color: textMuted, size: 20),
                               tooltip: "New Note (Ctrl+N)",
                             ),
                           ]
@@ -190,13 +194,13 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF1E1E1E),
+                          color: bgSidebar.withOpacity(0.5),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: borderColor),
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.search, color: textMuted, size: 18),
+                            Icon(Icons.search, color: textMuted, size: 18),
                             const SizedBox(width: 8),
                             Expanded(
                               child: TextField(
@@ -215,7 +219,7 @@ class _HomeScreenState extends State<HomeScreen> {
                               IconButton(
                                 padding: EdgeInsets.zero,
                                 constraints: const BoxConstraints(),
-                                icon: const Icon(Icons.close, color: textMuted, size: 16),
+                                icon: Icon(Icons.close, color: textMuted, size: 16),
                                 onPressed: () {
                                   _searchController.clear();
                                   noteService.updateSearchQuery("");
@@ -232,12 +236,12 @@ class _HomeScreenState extends State<HomeScreen> {
                     Expanded(
                       child: Consumer<NoteService>(
                         builder: (context, noteService, _) {
-                          if (noteService.isLoading) return const Center(child: CircularProgressIndicator(color: accent));
+                          if (noteService.isLoading) return Center(child: CircularProgressIndicator(color: accent));
                           if (noteService.notesPath == null) {
                             return Center(
                               child: TextButton(
                                 onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())), 
-                                child: const Text("Set Folder", style: TextStyle(color: accent))
+                                child: Text("Set Folder", style: TextStyle(color: accent))
                               )
                             );
                           }
@@ -248,7 +252,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           if (noteService.filterTag != null || noteService.searchQuery.isNotEmpty) {
                             return ListView.builder(
                               itemCount: noteService.notes.length,
-                              itemBuilder: (context, index) => _buildSimpleNoteItem(noteService.notes[index], noteService),
+                              itemBuilder: (context, index) => _buildSimpleNoteItem(context, noteService.notes[index], noteService),
                             );
                           }
 
@@ -263,7 +267,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     // Sidebar Footer
                     Container(
                       padding: const EdgeInsets.all(16),
-                      decoration: const BoxDecoration(border: Border(top: BorderSide(color: borderColor))),
+                      decoration: BoxDecoration(border: Border(top: BorderSide(color: borderColor))),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -271,7 +275,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())),
                             child: Row(
                               children: [
-                                const Icon(Icons.settings, color: textMuted, size: 16),
+                                Icon(Icons.settings, color: textMuted, size: 16),
                                 const SizedBox(width: 8),
                                 Text("Settings", style: GoogleFonts.jetBrainsMono(color: textMuted, fontSize: 12)),
                               ],
@@ -311,31 +315,31 @@ class _HomeScreenState extends State<HomeScreen> {
                                       title: Text("Delete Note?", style: GoogleFonts.spaceGrotesk(color: textMain)),
                                       content: Text("This action cannot be undone.", style: GoogleFonts.jetBrainsMono(color: textMuted)),
                                       actions: [
-                                        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("CANCEL", style: TextStyle(color: textMuted))),
+                                        TextButton(onPressed: () => Navigator.pop(ctx), child: Text("CANCEL", style: TextStyle(color: textMuted))),
                                         TextButton(
                                           onPressed: () {
                                             Provider.of<NoteService>(context, listen: false).deleteNote(noteService.selectedNote!);
                                             Navigator.pop(ctx);
                                           }, 
-                                          child: const Text("DELETE", style: TextStyle(color: accent))
+                                          child: Text("DELETE", style: TextStyle(color: accent))
                                         ),
                                       ],
                                     )
                                   );
                                 }, 
-                                icon: const Icon(Icons.delete_outline, color: textMuted, size: 20),
+                                icon: Icon(Icons.delete_outline, color: textMuted, size: 20),
                                 tooltip: "Delete Note",
                               ),
                               const SizedBox(width: 12),
                               IconButton(
                                 onPressed: () => _showCommandPalette(context, noteService),
-                                icon: const Icon(Icons.search, color: textMuted, size: 20),
+                                icon: Icon(Icons.search, color: textMuted, size: 20),
                                 tooltip: "Command Palette (Ctrl+Shift+P)",
                               ),
                               const SizedBox(width: 12),
                               IconButton(
                                 onPressed: () => _pickAndInsertImage(noteService), 
-                                icon: const Icon(Icons.image_outlined, color: textMuted, size: 20),
+                                icon: Icon(Icons.image_outlined, color: textMuted, size: 20),
                                 tooltip: "Insert Image",
                               ),
                               const Spacer(),
@@ -400,8 +404,8 @@ class _HomeScreenState extends State<HomeScreen> {
                                           p: GoogleFonts.spaceGrotesk(color: textMain.withOpacity(0.9), fontSize: 16, height: 1.6),
                                           h1: GoogleFonts.spaceGrotesk(color: textMain, fontSize: 32, fontWeight: FontWeight.bold),
                                           h2: GoogleFonts.spaceGrotesk(color: textMain, fontSize: 24, fontWeight: FontWeight.bold),
-                                          code: GoogleFonts.jetBrainsMono(backgroundColor: const Color(0xFF242424), color: accent),
-                                          codeblockDecoration: BoxDecoration(color: const Color(0xFF111111), borderRadius: BorderRadius.circular(4)),
+                                          code: GoogleFonts.jetBrainsMono(backgroundColor: accent.withOpacity(0.1), color: accent),
+                                          codeblockDecoration: BoxDecoration(color: bgSidebar, borderRadius: BorderRadius.circular(4)),
                                           checkbox: TextStyle(color: accent),
                                         ),
                                       ),
@@ -456,6 +460,7 @@ class _HomeScreenState extends State<HomeScreen> {
 }
 
   Widget _buildAutocompleteOverlay(BuildContext context, NoteService noteService) {
+    final theme = Provider.of<ThemeService>(context, listen: false).theme;
     final filteredNotes = noteService.notes.where((n) => 
       n.title.toLowerCase().contains(_autocompleteQuery.toLowerCase())
     ).take(5).toList();
@@ -468,8 +473,8 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Container(
         width: 280,
         decoration: BoxDecoration(
-          color: const Color(0xFF1E1E1E),
-          border: Border.all(color: const Color(0xFF2A2A2A)),
+          color: theme.bgSidebar,
+          border: Border.all(color: theme.borderColor),
           borderRadius: BorderRadius.circular(4),
           boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 8)]
         ),
@@ -479,16 +484,16 @@ class _HomeScreenState extends State<HomeScreen> {
             onTap: () => _injectSelection(note.title),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFF2A2A2A)))),
+              decoration: BoxDecoration(border: Border(bottom: BorderSide(color: theme.borderColor))),
               child: Row(
                 children: [
-                  const Icon(Icons.article_outlined, color: Color(0xFF8C8C8C), size: 16),
+                  Icon(Icons.article_outlined, color: theme.textMuted, size: 16),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(note.title, 
                       maxLines: 1, 
                       overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.jetBrainsMono(color: const Color(0xFFF4F1EA), fontSize: 13)
+                      style: GoogleFonts.jetBrainsMono(color: theme.textMain, fontSize: 13)
                     )
                   ),
                 ],
@@ -523,16 +528,17 @@ class _HomeScreenState extends State<HomeScreen> {
     final note = noteService.selectedNote;
     if (note == null) return const SizedBox();
     
+    final theme = Provider.of<ThemeService>(context).theme;
     const sidebarWidth = 300.0;
-    const bgSidebar = Color(0xFF161616);
-    const borderColor = Color(0xFF2A2A2A);
-    const textMain = Color(0xFFF4F1EA);
-    const textMuted = Color(0xFF8C8C8C);
-    const accent = Color(0xFFD93025);
+    final bgSidebar = theme.bgSidebar;
+    final borderColor = theme.borderColor;
+    final textMain = theme.textMain;
+    final textMuted = theme.textMuted;
+    final accent = theme.accent;
 
     return Container(
       width: sidebarWidth,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: bgSidebar,
         border: Border(left: BorderSide(color: borderColor)),
       ),
@@ -547,7 +553,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 const Spacer(),
                 IconButton(
                   onPressed: () => setState(() => _showProperties = false),
-                  icon: const Icon(Icons.close, color: textMuted, size: 18),
+                  icon: Icon(Icons.close, color: textMuted, size: 18),
                 )
               ],
             ),
@@ -570,8 +576,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                _buildPropertyField("Path", note.path),
-                _buildPropertyField("Modified", note.modified.toString().split('.')[0]),
+                _buildPropertyField(context, "Path", note.path),
+                _buildPropertyField(context, "Modified", note.modified.toString().split('.')[0]),
                 const SizedBox(height: 24),
                 Text("TAGS", style: GoogleFonts.spaceGrotesk(color: textMuted, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
                 const SizedBox(height: 8),
@@ -654,7 +660,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       },
                       child: Row(
                         children: [
-                          const Icon(Icons.link, color: textMuted, size: 14),
+                          Icon(Icons.link, color: textMuted, size: 14),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(link, style: GoogleFonts.jetBrainsMono(color: accent, fontSize: 12), overflow: TextOverflow.ellipsis),
@@ -668,7 +674,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   const SizedBox(height: 32),
                   Text("FRONTMATTER", style: GoogleFonts.spaceGrotesk(color: textMuted, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
                   const SizedBox(height: 12),
-                  ...note.metadata.entries.where((e) => e.key != 'title').map((e) => _buildPropertyField(e.key, e.value.toString())),
+                  ...note.metadata.entries.where((e) => e.key != 'title').map((e) => _buildPropertyField(context, e.key, e.value.toString())),
                 ]
               ],
             ),
@@ -678,8 +684,13 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildSimpleNoteItem(Note note, NoteService noteService) {
+  Widget _buildSimpleNoteItem(BuildContext context, Note note, NoteService noteService) {
+    final theme = Provider.of<ThemeService>(context).theme;
     final isSelected = noteService.selectedNote?.path == note.path;
+    final accent = theme.accent;
+    final textMain = theme.textMain;
+    final textMuted = theme.textMuted;
+
     return InkWell(
       onTap: () {
         noteService.selectNote(note);
@@ -688,7 +699,7 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Container(
         decoration: BoxDecoration(
           border: Border(left: BorderSide(color: isSelected ? accent : Colors.transparent, width: 2)),
-          color: isSelected ? const Color(0xFF242424) : null,
+          color: isSelected ? accent.withOpacity(0.1) : null,
         ),
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -715,6 +726,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildFolderItem(NoteFolder folder, NoteService noteService, {int level = 0}) {
+    final theme = Provider.of<ThemeService>(context).theme;
+    final accent = theme.accent;
+    final textMain = theme.textMain;
+    final textMuted = theme.textMuted;
     final isExpanded = _expandedFolders.contains(folder.path) || folder.path == noteService.notesPath;
     
     return Column(
@@ -769,6 +784,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildNoteItem(Note note, NoteService noteService, {int level = 0}) {
+    final theme = Provider.of<ThemeService>(context).theme;
+    final accent = theme.accent;
+    final textMain = theme.textMain;
+    final textMuted = theme.textMuted;
     final isSelected = noteService.selectedNote?.path == note.path;
 
     return InkWell(
@@ -779,12 +798,12 @@ class _HomeScreenState extends State<HomeScreen> {
       child: Container(
         decoration: BoxDecoration(
           border: Border(left: BorderSide(color: isSelected ? accent : Colors.transparent, width: 2)),
-          color: isSelected ? const Color(0xFF242424) : null,
+          color: isSelected ? accent.withOpacity(0.1) : null,
         ),
         padding: EdgeInsets.fromLTRB(36.0 + (level * 12), 10, 16, 10),
         child: Row(
           children: [
-            const Icon(Icons.description_outlined, size: 14, color: textMuted),
+            Icon(Icons.description_outlined, size: 14, color: textMuted),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -835,32 +854,36 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildFormattingToolbar(NoteService noteService) {
+    final theme = Provider.of<ThemeService>(context, listen: false).theme;
+    final textMuted = theme.textMuted;
+    final borderColor = theme.borderColor;
+
     return Container(
       height: 40,
-      decoration: const BoxDecoration(
-        color: Color(0xFF1E1E1E),
-        border: Border(bottom: BorderSide(color: borderColor)),
+      decoration: BoxDecoration(
+        color: theme.bgSidebar,
+        border: Border(bottom: BorderSide(color: theme.borderColor)),
       ),
       child: Row(
         children: [
           const SizedBox(width: 24),
-          _buildToolbarBtn(Icons.format_bold, () => _wrapSelection("**")),
-          _buildToolbarBtn(Icons.format_italic, () => _wrapSelection("_")),
-          _buildToolbarBtn(Icons.code, () => _wrapSelection("`")),
-          const VerticalDivider(color: borderColor, indent: 10, endIndent: 10),
-          _buildToolbarBtn(Icons.format_list_bulleted, () => _toggleLinePrefix("- ")),
-          _buildToolbarBtn(Icons.check_box_outlined, () => _toggleLinePrefix("- [ ] ")),
-          _buildToolbarBtn(Icons.title, () => _toggleLinePrefix("# ")),
+          _buildToolbarBtn(Icons.format_bold, textMuted, () => _wrapSelection("**")),
+          _buildToolbarBtn(Icons.format_italic, textMuted, () => _wrapSelection("_")),
+          _buildToolbarBtn(Icons.code, textMuted, () => _wrapSelection("`")),
+          VerticalDivider(color: borderColor, indent: 10, endIndent: 10),
+          _buildToolbarBtn(Icons.format_list_bulleted, textMuted, () => _toggleLinePrefix("- ")),
+          _buildToolbarBtn(Icons.check_box_outlined, textMuted, () => _toggleLinePrefix("- [ ] ")),
+          _buildToolbarBtn(Icons.title, textMuted, () => _toggleLinePrefix("# ")),
         ],
       ),
     );
   }
 
-  Widget _buildToolbarBtn(IconData icon, VoidCallback onPressed) {
+  Widget _buildToolbarBtn(IconData icon, Color color, VoidCallback onPressed) {
     return IconButton(
-      icon: Icon(icon, color: textMuted, size: 18),
+      icon: Icon(icon, color: color, size: 18),
       onPressed: onPressed,
-      hoverColor: const Color(0xFF2A2A2A),
+      hoverColor: color.withOpacity(0.1),
       constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
       padding: EdgeInsets.zero,
     );
@@ -925,37 +948,56 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showNewNoteOptions(BuildContext context, NoteService noteService) {
-    if (noteService.templates.isEmpty) {
-      noteService.createNewNote();
-      return;
-    }
-
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A1A),
-        title: Text("Create Note", style: GoogleFonts.spaceGrotesk(color: Colors.white, fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              title: Text("Empty Note", style: GoogleFonts.jetBrainsMono(color: Colors.white)),
-              onTap: () {
-                Navigator.pop(context);
-                noteService.createNewNote();
-              },
-            ),
-            const Divider(color: Color(0xFF2A2A2A)),
-            ...noteService.templates.map((template) => ListTile(
-              title: Text(template.title, style: GoogleFonts.jetBrainsMono(color: const Color(0xFFD93025))),
-              onTap: () {
-                Navigator.pop(context);
-                noteService.createNewNote(content: template.content);
-              },
-            )).toList(),
-          ],
-        ),
-      ),
+      builder: (context) {
+        final titleController = TextEditingController();
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1A1A1A),
+          title: Text("New Note", style: GoogleFonts.spaceGrotesk(color: Colors.white, fontWeight: FontWeight.bold)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: titleController,
+                style: GoogleFonts.jetBrainsMono(color: Colors.white),
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: "Enter title...",
+                  hintStyle: TextStyle(color: Colors.grey[600]),
+                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey[800]!)),
+                  focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFFD93025))),
+                ),
+              ),
+              const SizedBox(height: 24),
+              ListTile(
+                leading: const Icon(Icons.note_add, color: Colors.white70, size: 20),
+                title: Text("Empty Note", style: GoogleFonts.jetBrainsMono(color: Colors.white, fontSize: 13)),
+                onTap: () {
+                  Navigator.pop(context);
+                  noteService.createNewNote(title: titleController.text.isEmpty ? null : titleController.text);
+                },
+              ),
+              if (noteService.templates.isNotEmpty) ...[
+                const Padding(
+                  padding: EdgeInsets.only(top: 8.0, bottom: 4.0),
+                  child: Divider(color: Color(0xFF2A2A2A)),
+                ),
+                ...noteService.templates.map((template) => ListTile(
+                  leading: const Icon(Icons.copy, color: Color(0xFFD93025), size: 18),
+                  title: Text(template.title, style: GoogleFonts.jetBrainsMono(color: Colors.white, fontSize: 13)),
+                  subtitle: Text("From template", style: GoogleFonts.jetBrainsMono(color: Colors.grey[600], fontSize: 10)),
+                  onTap: () {
+                    Navigator.pop(context);
+                    final newTitle = titleController.text.isEmpty ? template.title : titleController.text;
+                    noteService.createFromTemplate(template, newTitle);
+                  },
+                )).toList(),
+              ],
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -1040,16 +1082,17 @@ class _HomeScreenState extends State<HomeScreen> {
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Metadata updated")));
   }
 
-  Widget _buildPropertyField(String label, String value) {
+  Widget _buildPropertyField(BuildContext context, String label, String value) {
+    final theme = Provider.of<ThemeService>(context, listen: false).theme;
     return Padding(
       padding: const EdgeInsets.only(bottom: 20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label.toUpperCase(), style: GoogleFonts.spaceGrotesk(color: const Color(0xFF8C8C8C), fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+          Text(label.toUpperCase(), style: GoogleFonts.spaceGrotesk(color: theme.textMuted, fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
           const SizedBox(height: 6),
           Text(value, 
-            style: GoogleFonts.jetBrainsMono(color: const Color(0xFFF4F1EA), fontSize: 12),
+            style: GoogleFonts.jetBrainsMono(color: theme.textMain, fontSize: 12),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
@@ -1064,16 +1107,17 @@ class _HomeScreenState extends State<HomeScreen> {
     final backlinks = noteService.getBacklinksFor(noteService.selectedNote!);
     if (backlinks.isEmpty) return const SizedBox();
 
-    const textMuted = Color(0xFF8C8C8C);
-    const accent = Color(0xFFD93025);
-    const textMain = Color(0xFFF4F1EA);
+    final theme = Provider.of<ThemeService>(context).theme;
+    final textMuted = theme.textMuted;
+    final accent = theme.accent;
+    final textMain = theme.textMain;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            const Icon(Icons.link, color: accent, size: 16),
+            Icon(Icons.link, color: accent, size: 16),
             const SizedBox(width: 8),
             Text("LINKED MENTIONS", style: GoogleFonts.spaceGrotesk(color: textMuted, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
           ],
@@ -1090,8 +1134,8 @@ class _HomeScreenState extends State<HomeScreen> {
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFF161616),
-                border: Border.all(color: const Color(0xFF2A2A2A)),
+                color: theme.bgSidebar,
+                border: Border.all(color: theme.borderColor),
                 borderRadius: BorderRadius.circular(4),
               ),
               child: Column(
@@ -1115,9 +1159,10 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildTagsSidebarList(BuildContext context, NoteService noteService) {
-    const textMuted = Color(0xFF8C8C8C);
-    const textMain = Color(0xFFF4F1EA);
-    const accent = Color(0xFFD93025);
+    final theme = Provider.of<ThemeService>(context).theme;
+    final textMuted = theme.textMuted;
+    final textMain = theme.textMain;
+    final accent = theme.accent;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1140,9 +1185,9 @@ class _HomeScreenState extends State<HomeScreen> {
                     margin: const EdgeInsets.only(right: 8),
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
-                      color: isFiltered ? accent.withOpacity(0.2) : const Color(0xFF242424),
+                      color: isFiltered ? accent.withOpacity(0.2) : theme.bgSidebar,
                       borderRadius: BorderRadius.circular(4),
-                      border: isFiltered ? Border.all(color: accent) : null,
+                      border: isFiltered ? Border.all(color: accent) : Border.all(color: theme.borderColor),
                     ),
                     child: Text("#$tag", style: GoogleFonts.jetBrainsMono(
                       color: isFiltered ? textMain : textMain.withOpacity(0.7), 
@@ -1155,7 +1200,7 @@ class _HomeScreenState extends State<HomeScreen> {
             }).toList(),
           ),
         ),
-        const Divider(color: Color(0xFF2A2A2A), height: 32, indent: 24, endIndent: 24),
+        Divider(color: theme.borderColor, height: 32, indent: 24, endIndent: 24),
       ],
     );
   }

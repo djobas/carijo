@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/note_service.dart';
 import '../services/supabase_service.dart';
+import '../services/theme_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -38,10 +39,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const bgDark = Color(0xFF1A1A1A);
-    const textMain = Color(0xFFF4F1EA);
-    const accent = Color(0xFFD93025);
-    const borderGray = Color(0xFF8C8C8C);
+    final themeService = Provider.of<ThemeService>(context);
+    final theme = themeService.theme;
+
+    final bgDark = theme.bgMain;
+    final textMain = theme.textMain;
+    final accent = theme.accent;
+    final borderGray = theme.textMuted;
 
     return Scaffold(
       backgroundColor: bgDark,
@@ -49,7 +53,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         backgroundColor: bgDark,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.close, color: textMain),
+          icon: Icon(Icons.close, color: textMain),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text("Settings", style: GoogleFonts.spaceGrotesk(color: textMain, fontWeight: FontWeight.bold)),
@@ -77,6 +81,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
                 const SizedBox(height: 20),
                 
+                Text("UI Theme", 
+                  style: GoogleFonts.spaceGrotesk(color: textMain.withOpacity(0.8), fontSize: 14)
+                ),
+                DropdownButton<AppTheme>(
+                  value: themeService.theme,
+                  dropdownColor: theme.bgSidebar,
+                  isExpanded: true,
+                  underline: Container(height: 1, color: borderGray),
+                  icon: Icon(Icons.palette, color: accent, size: 20),
+                  items: themeService.themes.map((t) => DropdownMenuItem(
+                    value: t,
+                    child: Text(t.name, style: GoogleFonts.jetBrainsMono(color: textMain, fontSize: 14)),
+                  )).toList(),
+                  onChanged: (newTheme) {
+                    if (newTheme != null) themeService.setTheme(newTheme);
+                  },
+                ),
+                const SizedBox(height: 32),
+
                 Text("Local Folder Path", 
                   style: GoogleFonts.spaceGrotesk(color: textMain.withOpacity(0.8), fontSize: 14)
                 ),
@@ -84,8 +107,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   controller: _pathController,
                   style: GoogleFonts.jetBrainsMono(color: textMain),
                   decoration: InputDecoration(
-                    enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: borderGray)),
-                    focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: accent)),
+                    enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: borderGray)),
+                    focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: accent)),
                     hintText: "/home/user/notes",
                     hintStyle: TextStyle(color: textMain.withOpacity(0.3)),
                   ),
@@ -109,8 +132,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   controller: _supabaseUrlController,
                   style: GoogleFonts.jetBrainsMono(color: textMain),
                   decoration: InputDecoration(
-                    enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: borderGray)),
-                    focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: accent)),
+                    enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: borderGray)),
+                    focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: accent)),
                     hintText: "https://xyz.supabase.co",
                     hintStyle: TextStyle(color: textMain.withOpacity(0.3)),
                   ),
@@ -125,8 +148,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   obscureText: true,
                   style: GoogleFonts.jetBrainsMono(color: textMain),
                   decoration: InputDecoration(
-                    enabledBorder: const UnderlineInputBorder(borderSide: BorderSide(color: borderGray)),
-                    focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: accent)),
+                    enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: borderGray)),
+                    focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: accent)),
                     hintText: "eyJhbGci...",
                     hintStyle: TextStyle(color: textMain.withOpacity(0.3)),
                   ),

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../services/note_service.dart';
+import '../services/theme_service.dart';
 import '../screens/graph_view_screen.dart';
 import '../screens/deploy_screen.dart';
 import '../screens/settings_screen.dart';
@@ -88,11 +89,12 @@ class _CommandPaletteState extends State<CommandPalette> {
 
   @override
   Widget build(BuildContext context) {
-    const bgDark = Color(0xFF1A1A1A);
-    const borderColor = Color(0xFF2A2A2A);
-    const accent = Color(0xFFD93025);
-    const textMain = Color(0xFFF4F1EA);
-    const textMuted = Color(0xFF8C8C8C);
+    final theme = Provider.of<ThemeService>(context).theme;
+    final bgDark = theme.bgMain;
+    final borderColor = theme.borderColor;
+    final accent = theme.accent;
+    final textMain = theme.textMain;
+    final textMuted = theme.textMuted;
 
     return Center(
       child: Material(
@@ -136,7 +138,7 @@ class _CommandPaletteState extends State<CommandPalette> {
                       hintText: "Type a command...",
                       hintStyle: GoogleFonts.jetBrainsMono(color: textMuted),
                       border: InputBorder.none,
-                      icon: const Icon(Icons.search, color: textMuted),
+                      icon: Icon(Icons.search, color: textMuted),
                     ),
                     onSubmitted: (_) {
                       if (_filteredActions.isNotEmpty) {
@@ -148,7 +150,7 @@ class _CommandPaletteState extends State<CommandPalette> {
                   ),
                 ),
               ),
-              const Divider(color: borderColor, height: 1),
+              Divider(color: borderColor, height: 1),
               Expanded(
                 child: _filteredActions.isEmpty
                     ? Center(child: Text("No commands found", style: GoogleFonts.jetBrainsMono(color: textMuted)))
@@ -164,7 +166,7 @@ class _CommandPaletteState extends State<CommandPalette> {
                             },
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              color: isSelected ? const Color(0xFF242424) : null,
+                              color: isSelected ? accent.withOpacity(0.1) : null,
                               child: Row(
                                 children: [
                                   Icon(action.icon, size: 18, color: isSelected ? accent : textMuted),
