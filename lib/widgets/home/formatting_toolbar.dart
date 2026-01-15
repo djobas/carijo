@@ -39,9 +39,9 @@ class FormattingToolbar extends StatelessWidget {
       child: Row(
         children: [
           const SizedBox(width: 24),
-          _buildToolbarBtn(Icons.format_bold, textMuted, onBold),
-          _buildToolbarBtn(Icons.format_italic, textMuted, onItalic),
-          _buildToolbarBtn(Icons.code, textMuted, onCode),
+          _buildToolbarBtn(Icons.format_bold, textMuted, onBold, "Bold"),
+          _buildToolbarBtn(Icons.format_italic, textMuted, onItalic, "Italic"),
+          _buildToolbarBtn(Icons.code, textMuted, onCode, "Inline Code"),
           VerticalDivider(color: borderColor, indent: 10, endIndent: 10),
           _buildToolbarBtn(Icons.format_list_bulleted, textMuted, onBulletList, "Bulleted List"),
           _buildToolbarBtn(Icons.check_box_outlined, textMuted, onCheckboxList, "Checklist"),
