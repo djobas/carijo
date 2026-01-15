@@ -17,6 +17,7 @@ import 'deploy_screen.dart';
 import 'graph_view_screen.dart';
 import 'settings_screen.dart';
 import '../widgets/theme_picker.dart';
+import '../widgets/sync_wizard.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -398,6 +399,7 @@ class _HomeScreenState extends State<HomeScreen> {
             }
           }),
           CommandAction(label: "Deploy / Sync", icon: Icons.cloud_upload, onAction: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DeployScreen()))),
+          CommandAction(label: "Setup Sync", icon: Icons.cloud_sync, onAction: () => _showSyncWizard(context)),
           CommandAction(label: "Settings", icon: Icons.settings, onAction: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()))),
         ],
       ),
@@ -412,6 +414,23 @@ class _HomeScreenState extends State<HomeScreen> {
       barrierColor: Colors.black.withValues(alpha: 0.7),
       transitionDuration: const Duration(milliseconds: 200),
       pageBuilder: (context, animation, secondaryAnimation) => const ThemePicker(),
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        return ScaleTransition(
+          scale: CurvedAnimation(parent: animation, curve: Curves.easeOutBack),
+          child: FadeTransition(opacity: animation, child: child),
+        );
+      },
+    );
+  }
+
+  void _showSyncWizard(BuildContext context) {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: "Sync Wizard",
+      barrierColor: Colors.black.withValues(alpha: 0.7),
+      transitionDuration: const Duration(milliseconds: 250),
+      pageBuilder: (context, animation, secondaryAnimation) => const SyncWizard(),
       transitionBuilder: (context, animation, secondaryAnimation, child) {
         return ScaleTransition(
           scale: CurvedAnimation(parent: animation, curve: Curves.easeOutBack),
