@@ -15,6 +15,7 @@ import 'domain/use_cases/get_backlinks_use_case.dart';
 import 'domain/use_cases/save_note_use_case.dart';
 
 import 'data/repositories/supabase_note_repository.dart';
+import 'data/repositories/shell_git_repository.dart';
 import 'domain/use_cases/sync_notes_use_case.dart';
 
 void main() async {
@@ -22,6 +23,7 @@ void main() async {
   
   final noteRepository = FileNoteRepository();
   final supabaseRepository = SupabaseNoteRepository();
+  final gitRepository = ShellGitRepository();
   final syncUseCase = SyncNotesUseCase(supabaseRepository);
 
   final supabaseService = SupabaseService(
@@ -41,7 +43,7 @@ void main() async {
             saveNoteUseCase: SaveNoteUseCase(noteRepository),
           ),
         ),
-        ChangeNotifierProvider(create: (_) => GitService()),
+        ChangeNotifierProvider(create: (_) => GitService(gitRepository)),
         ChangeNotifierProvider.value(value: supabaseService),
         ChangeNotifierProvider(create: (_) => ThemeService()),
       ],

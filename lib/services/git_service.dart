@@ -1,19 +1,18 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
-
-class GitFile {
-  final String path;
-  final bool isStaged;
-  final String status; // 'modified', 'added', 'deleted'
-
-  GitFile({required this.path, required this.isStaged, required this.status});
-}
+export '../domain/models/git_file.dart';
+import '../domain/models/git_file.dart';
+import '../domain/repositories/git_repository.dart';
 
 class GitService extends ChangeNotifier {
+  final GitRepository repository;
+  
   bool _isSyncing = false;
   bool get isSyncing => _isSyncing;
+  
   String? _lastError;
   String? get lastError => _lastError;
+
+  GitService(this.repository);
 
   Future<void> pushToBlog(String workingDir, {String? commitMessage}) async {
     _isSyncing = true;
@@ -21,20 +20,20 @@ class GitService extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // 1. Stage all changes (simple flow for now)
-      await _runGit(['add', '.'], workingDir);
+      // 1. Stage all changes
+      await repository.stageFile('.', workingDir);
       
-      // 2. Commit with provided message or timestamp
+      // 2. Commit
       final message = commitMessage ?? "Carijó Deploy: ${DateTime.now().toIso8601String()}";
-      await _runGit(['commit', '-m', message], workingDir);
+      await repository.commit(message, workingDir);
       
       // 3. Push
-      await _runGit(['push'], workingDir);
+      await repository.push(workingDir);
       
-      print("Git Push executed successfully");
+      debugPrint("Git Push executed successfully");
     } catch (e) {
       _lastError = e.toString();
-      print("Git Push error: $e");
+      debugPrint("Git Push error: $e");
     } finally {
       _isSyncing = false;
       notifyListeners();
@@ -43,25 +42,9 @@ class GitService extends ChangeNotifier {
 
   Future<List<GitFile>> getGitStatus(String workingDir) async {
     try {
-      final result = await _runGit(['status', '--porcelain'], workingDir);
-      if (result.isEmpty) return [];
-
-      return result.split('\n').where((line) => line.isNotEmpty).map((line) {
-        final statusCodes = line.substring(0, 2);
-        final path = line.substring(3).trim();
-        
-        // Porcelain format: XY path
-        // X = index, Y = working tree
-        final isStaged = statusCodes[0] != ' ' && statusCodes[0] != '?';
-        
-        String status = 'modified';
-        if (statusCodes.contains('?')) status = 'added';
-        if (statusCodes.contains('D')) status = 'deleted';
-
-        return GitFile(path: path, isStaged: isStaged, status: status);
-      }).toList();
+      return await repository.getStatus(workingDir);
     } catch (e) {
-      print("Git Status error: $e");
+      debugPrint("Git Status error: $e");
       return [];
     }
   }
@@ -69,35 +52,22 @@ class GitService extends ChangeNotifier {
   Future<void> toggleStaging(String path, bool stage, String workingDir) async {
     try {
       if (stage) {
-        await _runGit(['add', path], workingDir);
+        await repository.stageFile(path, workingDir);
       } else {
-        await _runGit(['reset', 'HEAD', path], workingDir);
+        await repository.unstageFile(path, workingDir);
       }
       notifyListeners();
     } catch (e) {
-      print("Git Staging error: $e");
+      debugPrint("Git Staging error: $e");
     }
   }
 
   Future<String> getFileDiff(String path, String workingDir) async {
     try {
-      // Show both staged and unstaged changes relative to HEAD
-      return await _runGit(['diff', 'HEAD', '--', path], workingDir);
+      return await repository.getDiff(path, workingDir);
     } catch (e) {
-      // If file is new and not in HEAD, use --no-index or just show as new
-      try {
-        return await _runGit(['diff', '--no-index', '/dev/null', path], workingDir);
-      } catch (_) {
-        return "New file: $path";
-      }
+      debugPrint("Git Diff error: $e");
+      return "Error fetching diff: $e";
     }
-  }
-
-  Future<String> _runGit(List<String> args, String workingDir) async {
-    final result = await Process.run('git', args, workingDirectory: workingDir);
-    if (result.exitCode != 0) {
-      throw Exception("Git command failed: git ${args.join(' ')}\nError: ${result.stderr}");
-    }
-    return result.stdout.toString();
   }
 }
