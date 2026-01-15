@@ -10,6 +10,9 @@ import 'widgets/command_palette.dart';
 import 'services/note_service.dart';
 import 'services/theme_service.dart';
 import 'data/repositories/file_note_repository.dart';
+import 'domain/use_cases/search_notes_use_case.dart';
+import 'domain/use_cases/get_backlinks_use_case.dart';
+import 'domain/use_cases/save_note_use_case.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,10 +20,19 @@ void main() async {
   final supabaseService = SupabaseService();
   await supabaseService.initialize();
 
+  final repository = FileNoteRepository();
+
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => NoteService(FileNoteRepository())),
+        ChangeNotifierProvider(
+          create: (_) => NoteService(
+            repository: repository,
+            searchUseCase: SearchNotesUseCase(),
+            getBacklinksUseCase: GetBacklinksUseCase(),
+            saveNoteUseCase: SaveNoteUseCase(repository),
+          ),
+        ),
         ChangeNotifierProvider(create: (_) => GitService()),
         ChangeNotifierProvider.value(value: supabaseService),
         ChangeNotifierProvider(create: (_) => ThemeService()),

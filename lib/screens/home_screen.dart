@@ -130,20 +130,23 @@ class _HomeScreenState extends State<HomeScreen> {
           body: Row(
             children: [
               // 1. Sidebar (Folders, Search, Tags)
-              Column(
-                children: [
-                  Expanded(
-                    child: FolderSidebar(
-                      onNewNote: () => _showNewNoteOptions(context, noteService),
-                      onNoteSelected: (note) {
-                        noteService.selectNote(note);
-                        _editorController.text = note.content;
-                      },
-                      searchController: _searchController,
+              SizedBox(
+                width: 280,
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: FolderSidebar(
+                        onNewNote: () => _showNewNoteOptions(context, noteService),
+                        onNoteSelected: (note) {
+                          noteService.selectNote(note);
+                          _editorController.text = note.content;
+                        },
+                        searchController: _searchController,
+                      ),
                     ),
-                  ),
-                  const TagsSidebar(),
-                ],
+                    const TagsSidebar(),
+                  ],
+                ),
               ),
 
               // 2. Main Editor Area
