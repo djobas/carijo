@@ -1,50 +1,163 @@
 # 🐓 Carijó Notes
 
-**Carijó Notes** é uma aplicação de gestão de conhecimento pessoal (PKM) *local-first*, desenvolvida sob medida para programadores e criativos que precisam de uma ponte veloz entre o pensamento efêmero e a publicação estruturada.
+[![Flutter](https://img.shields.io/badge/Flutter-3.0+-02569B?logo=flutter)](https://flutter.dev)
+[![Platform](https://img.shields.io/badge/Platform-Windows-0078D6?logo=windows)](https://www.microsoft.com/windows)
+[![License](https://img.shields.io/badge/License-Proprietary-gray)]()
 
-O projeto elimina o atrito de organização, permitindo que você foque no que importa: **ter a ideia e registrá-la.**
+**Carijó Notes** é uma aplicação de gestão de conhecimento pessoal (PKM) *local-first*, desenvolvida para programadores e criativos que precisam de uma ponte veloz entre o pensamento efêmero e a publicação estruturada.
+
+> **"Cisque suas ideias. Cante para o mundo."**
+
+---
+
+## ✨ Funcionalidades
+
+### 📝 Editor & Organização
+- **Editor Markdown** com preview em tempo real e syntax highlighting
+- **Navegação Bidirecional** — links `[[Nota]]` com backlinks automáticos (Zettelkasten)
+- **Frontmatter YAML** — metadados ricos para cada nota
+- **Árvore de Pastas** — organização hierárquica das notas
+- **Sistema de Tags** — filtragem e categorização
+- **Templates** — crie notas a partir de modelos
+- **Daily Notes** — notas diárias automáticas
+
+### ⚡ Produtividade
+- **Quick Capture** (`Ctrl+N`) — captura instantânea de ideias
+- **Command Palette** (`Ctrl+K`) — navegação e comandos rápidos
+- **Auto-Save** — salvamento automático com debounce
+- **Fuzzy Search** — busca inteligente em todas as notas
+
+### 🔗 Graph View
+- **Visualização de Grafo** — veja suas notas como uma rede interconectada
+- **Animação Force-Directed** — layout orgânico em tempo real
+- **Interação** — arraste nós, veja conexões ao hover
+
+### 🎨 Temas
+6 temas profissionais incluídos:
+| Tema | Estilo |
+|------|--------|
+| **Carijó Dark** | Preto matte com acento vermelho |
+| **Dracula** | Roxo e rosa clássico |
+| **Nord** | Azul polar minimalista |
+| **Gruvbox** | Tons quentes retrô |
+| **Solarized Dark** | Paleta científica |
+| **Monokai Pro** | Amarelo vibrante |
+
+### 🚀 Sincronização & Deploy
+- **Git Integration** — staging area visual, commits e push direto para seu blog
+- **Supabase Sync** — backup e sincronização na nuvem
+- **Sync Wizard** — configuração guiada passo a passo
+
+---
+
+## 🏗️ Arquitetura
+
+```
+lib/
+├── main.dart           # Entry point com MultiProvider
+├── screens/            # 4 telas principais
+│   ├── home_screen.dart
+│   ├── settings_screen.dart
+│   ├── deploy_screen.dart
+│   └── graph_view_screen.dart
+├── services/           # Estado reativo (ChangeNotifier)
+│   ├── note_service.dart
+│   ├── git_service.dart
+│   ├── supabase_service.dart
+│   └── theme_service.dart
+├── domain/             # Clean Architecture
+│   ├── models/
+│   ├── repositories/
+│   └── use_cases/
+└── widgets/            # UI Components
+```
+
+---
+
+## 🛠️ Stack Tecnológica
+
+| Categoria | Tecnologia |
+|-----------|------------|
+| **Framework** | Flutter Desktop (Windows) |
+| **State Management** | Provider |
+| **Database** | Isar (indexação local) |
+| **Markdown** | flutter_markdown + flutter_math_fork |
+| **Cloud Sync** | Supabase |
+| **VCS** | Git CLI |
+| **Tipografia** | Google Fonts (JetBrains Mono & Space Grotesk) |
+
+---
+
+## ⌨️ Atalhos de Teclado
+
+| Atalho | Ação |
+|--------|------|
+| `Ctrl+K` | Command Palette |
+| `Ctrl+N` | Quick Capture |
+| `Ctrl+S` | Salvar nota atual |
+| `Ctrl+B` | Negrito |
+| `Ctrl+I` | Itálico |
+| `Ctrl+Shift+P` | Command Palette (alternativo) |
+
+---
+
+## 🚀 Como Executar
+
+### Pré-requisitos
+- [Flutter SDK](https://flutter.dev/docs/get-started/install) >= 3.0.0
+- Windows 10/11
+- Git (opcional, para funcionalidade de deploy)
+
+### Instalação
+
+```bash
+# 1. Clone o repositório
+git clone <url-do-repositorio>
+cd carijo_notes
+
+# 2. Instale as dependências
+flutter pub get
+
+# 3. Gere os arquivos do Isar
+dart run build_runner build
+
+# 4. Execute o aplicativo
+flutter run -d windows
+```
+
+---
+
+## 📁 Dados & Privacidade
+
+- **100% Local-First** — suas notas são arquivos `.md` no seu computador
+- **Sem telemetria** — nenhum dado é coletado
+- **Você é dono dos seus dados** — exporte quando quiser
+
+---
+
+## 🗺️ Roadmap
+
+- [ ] Suporte a PDF/HTML export
+- [ ] Plugins e extensões
+- [ ] Suporte macOS/Linux
+- [ ] Modo colaborativo
+- [ ] Mobile (iOS/Android)
 
 ---
 
 ## 💡 Filosofia: Ciscagem e Canto
 
-A aplicação é construída sobre a metáfora do **Galo Carijó**, traduzindo-se em três pilares técnicos:
+A aplicação é construída sobre a metáfora do **Galo Carijó**:
 
-1.  **Ciscagem (Quick Capture):** Captura instantânea de ideias em Markdown. Sem burocracia, sem pastas obrigatórias, sem títulos forçados. Apenas o pensamento puro.
-2.  **O Ninho (Knowledge Base):** Suas notas residem localmente, organizadas via links bidirecionais (Zettelkasten) e metadados ricos (YAML Frontmatter).
-3.  **O Canto (Deploy):** Integração nativa com Git para transformar suas notas selecionadas em publicações reais no seu blog ou site estático.
+1. **🔍 Ciscagem (Quick Capture)** — Capture ideias instantaneamente, sem fricção
+2. **🪺 O Ninho (Knowledge Base)** — Organize via links bidirecionais e metadados
+3. **🎤 O Canto (Deploy)** — Publique suas notas para o mundo via Git
 
-## 🎨 Estética: "Carijó Minimal"
+---
 
-Esqueça o rústico ou o lúdico. O Carijó Notes adota uma identidade visual **High-Contrast, Dark Mode e Tipográfica**.
+## 📄 Licença
 
--   **Paleta:** Baseada na plumagem do galo (Preto Matte, Off-White, Cinza) com acentos em **Vermelho Crista** para ações críticas.
--   **Vibe:** Uma ferramenta de trabalho sóbria, focada em texto e código, utilizando fontes *Monospace* para evocar a precisão de um terminal moderno.
-
-## 🚀 Funcionalidades Atuais
-
-O projeto já conta com o seguinte alicerce:
-
--   [x] **Editor de Markdown:** Edição em tempo real com visualização (Preview) integrada.
--   [x] **Navegação Bidirecional:** Suporte inicial para links `[[Nota]]`.
--   [x] **Quick Capture:** Atalho global para captura rápida de pensamentos.
--   [x] **Command Palette:** `Ctrl+K` para navegação e comandos rápidos.
--   [x] **Staging Area:** Interface para visualização de mudanças prontas para o Git (mock funcional).
--   [x] **Local-First:** Armazenamento direto em arquivos `.md` locais, garantindo a posse total dos seus dados.
-
-## 🛠️ Stack Tecnológica
-
--   **Framework:** Flutter (Desktop/Windows)
--   **Gerenciamento de Estado:** Provider
--   **Tipografia:** Google Fonts (JetBrains Mono & Space Grotesk)
--   **Markdown:** `flutter_markdown` para renderização e prefixos YAML para metadados.
-
-## 🏗️ Como Executar
-
-1.  Certifique-se de ter o Flutter instalado (`flutter doctor`).
-2.  Clone o repositório.
-3.  Execute `flutter pub get` na raiz.
-4.  Inicie a aplicação: `flutter run -d windows`.
+Projeto proprietário. Todos os direitos reservados.
 
 ---
 
