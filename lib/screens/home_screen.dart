@@ -163,6 +163,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         onBulletList: () => _toggleLinePrefix("- "),
                         onCheckboxList: () => _toggleLinePrefix("- [ ] "),
                         onHeading: () => _toggleLinePrefix("# "),
+                        onTable: _insertTable,
+                        onLink: () => _wrapSelection("[[", "]]"),
                       ),
                     
                     // Editor & Backlinks
@@ -339,6 +341,17 @@ class _HomeScreenState extends State<HomeScreen> {
         noteService.updateCurrentNote(_editorController.text);
       }
     }
+  }
+
+  void _insertTable() {
+    const tableTemplate = "\n| Col 1 | Col 2 |\n|-------|-------|\n| Cell  | Cell  |\n";
+    final text = _editorController.text;
+    final selection = _editorController.selection;
+    final newText = selection.start == -1 
+        ? "$text$tableTemplate" 
+        : text.replaceRange(selection.start, selection.end, tableTemplate);
+    _editorController.text = newText;
+    _editorController.selection = TextSelection.collapsed(offset: selection.start + tableTemplate.length);
   }
 
   void _wrapSelection(String prefix, [String? suffix]) {

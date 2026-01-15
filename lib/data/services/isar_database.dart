@@ -1,6 +1,6 @@
 import 'package:isar/isar.dart';
 import 'package:path_provider/path_provider.dart';
-import '../domain/models/note.dart';
+import '../../domain/models/note.dart';
 
 class IsarDatabase {
   late Isar _isar;

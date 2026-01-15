@@ -1,6 +1,6 @@
 import 'dart:io';
-import '../domain/models/note.dart';
-import '../domain/repositories/note_repository.dart';
+import '../../domain/models/note.dart';
+import '../../domain/repositories/note_repository.dart';
 import '../services/isar_database.dart';
 
 class IndexedNoteRepository implements NoteRepository {
