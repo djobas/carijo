@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
+import 'package:webview_windows/webview_windows.dart';
 import 'package:markdown/markdown.dart' as md;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -11,6 +12,89 @@ import '../../domain/models/note.dart';
 import 'backlinks_sidebar.dart';
 
 // --- Markdown Extensions for Tech Editor ---
+
+class MermaidBuilder extends MarkdownElementBuilder {
+  @override
+  Widget visitElementAfter(md.Element element, TextStyle? preferredStyle) {
+    final String content = element.textContent.trim();
+    return MermaidWidget(content: content);
+  }
+}
+
+class MermaidWidget extends StatefulWidget {
+  final String content;
+  const MermaidWidget({super.key, required this.content});
+
+  @override
+  State<MermaidWidget> createState() => _MermaidWidgetState();
+}
+
+class _MermaidWidgetState extends State<MermaidWidget> {
+  final _controller = WebviewController();
+  bool _initialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initWebview();
+  }
+
+  Future<void> _initWebview() async {
+    try {
+      await _controller.initialize();
+      await _controller.setBackgroundColor(Colors.transparent);
+      
+      final html = """
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+          <style>
+            body { background: transparent; margin: 0; padding: 10px; color: white; overflow: hidden; }
+            #graph { width: 100%; display: flex; justify-content: center; }
+          </style>
+        </head>
+        <body>
+          <div id="graph" class="mermaid">
+            ${widget.content}
+          </div>
+          <script>
+            mermaid.initialize({ startOnLoad: true, theme: 'dark', securityLevel: 'loose' });
+          </script>
+        </body>
+        </html>
+      """;
+      
+      await _controller.loadHtmlString(html);
+      if (mounted) setState(() => _initialized = true);
+    } catch (e) {
+      debugPrint("Mermaid Init Error: $e");
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 300,
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(vertical: 24),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0A0A0A),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white10),
+      ),
+      child: _initialized 
+          ? Webview(_controller)
+          : const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+    );
+  }
+}
 
 class LatexSyntax extends md.InlineSyntax {
   LatexSyntax() : super(r'\$([^\$]+)\$');
@@ -229,6 +313,7 @@ class _NoteEditorState extends State<NoteEditor> {
             builders: {
               'latex': MathBuilder(isBlock: false),
               'latex-block': MathBuilder(isBlock: true),
+              'pre': MermaidBuilder(),
             },
             onTapLink: (text, href, title) {
               if (href != null) {

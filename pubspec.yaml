@@ -34,6 +34,7 @@ dependencies:
   isar_flutter_libs: ^3.1.0+1
   path_provider: ^2.1.2
   flutter_math_fork: ^0.7.2
+  webview_windows: ^0.4.0
 
 dev_dependencies:
   flutter_test:
