@@ -42,8 +42,9 @@ class _CommandPaletteState extends State<CommandPalette> {
   Future<void> _loadActions(String query) async {
     final noteService = Provider.of<NoteService>(context, listen: false);
 
-    if (widget.actions != null) {
-      final scoredActions = widget.actions!
+    final actions = widget.actions;
+    if (actions != null) {
+      final scoredActions = actions
           .map((a) => MapEntry(a, noteService.fuzzyScore(query, a.label)))
           .where((e) => e.value > 0)
           .toList();

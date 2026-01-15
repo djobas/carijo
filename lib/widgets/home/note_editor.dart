@@ -13,11 +13,35 @@ import 'backlinks_sidebar.dart';
 
 // --- Markdown Extensions for Tech Editor ---
 
+class MermaidBlockSyntax extends md.BlockSyntax {
+  @override
+  RegExp get pattern => RegExp(r'^```mermaid\s*$');
+
+  const MermaidBlockSyntax();
+
+  @override
+  md.Node parse(md.BlockParser parser) {
+    final childLines = <String>[];
+    parser.advance();
+    
+    while (!parser.isDone) {
+      final line = parser.current.content;
+      if (line.trim() == '```') {
+        parser.advance();
+        break;
+      }
+      childLines.add(line);
+      parser.advance();
+    }
+    
+    return md.Element.text('mermaid', childLines.join('\n'));
+  }
+}
+
 class MermaidBuilder extends MarkdownElementBuilder {
   @override
   Widget visitElementAfter(md.Element element, TextStyle? preferredStyle) {
-    final String content = element.textContent.trim();
-    return MermaidWidget(content: content);
+    return MermaidWidget(content: element.textContent.trim());
   }
 }
 
@@ -30,8 +54,9 @@ class MermaidWidget extends StatefulWidget {
 }
 
 class _MermaidWidgetState extends State<MermaidWidget> {
-  final _controller = WebviewController();
+  WebviewController? _controller;
   bool _initialized = false;
+  String? _initializedContent;
 
   @override
   void initState() {
@@ -39,10 +64,30 @@ class _MermaidWidgetState extends State<MermaidWidget> {
     _initWebview();
   }
 
+  @override
+  void didUpdateWidget(MermaidWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.content != widget.content) {
+      _initWebview();
+    }
+  }
+
   Future<void> _initWebview() async {
+    final currentContent = widget.content;
+    if (_initialized && _initializedContent == currentContent) return;
+
     try {
-      await _controller.initialize();
-      await _controller.setBackgroundColor(Colors.transparent);
+      final controller = _controller ?? WebviewController();
+      if (!_initialized) {
+        await controller.initialize();
+      }
+      
+      if (!mounted) {
+        controller.dispose();
+        return;
+      }
+      
+      await controller.setBackgroundColor(Colors.transparent);
       
       final html = """
         <!DOCTYPE html>
@@ -50,23 +95,38 @@ class _MermaidWidgetState extends State<MermaidWidget> {
         <head>
           <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
           <style>
-            body { background: transparent; margin: 0; padding: 10px; color: white; overflow: hidden; }
+            body { background: transparent; margin: 0; padding: 10px; color: white; overflow: hidden; font-family: sans-serif; }
             #graph { width: 100%; display: flex; justify-content: center; }
           </style>
         </head>
         <body>
           <div id="graph" class="mermaid">
-            ${widget.content}
+            ${currentContent.replaceAll('`', '\\`')}
           </div>
           <script>
-            mermaid.initialize({ startOnLoad: true, theme: 'dark', securityLevel: 'loose' });
+            try {
+              mermaid.initialize({ 
+                startOnLoad: true, 
+                theme: 'dark', 
+                securityLevel: 'loose'
+              });
+              mermaid.run();
+            } catch (e) {
+              document.body.innerHTML = '<pre style="color:red">' + e.message + '</pre>';
+            }
           </script>
         </body>
         </html>
       """;
       
-      await _controller.loadStringContent(html);
-      if (mounted) setState(() => _initialized = true);
+      await controller.loadStringContent(html);
+      if (mounted) {
+        setState(() {
+          _controller = controller;
+          _initialized = true;
+          _initializedContent = currentContent;
+        });
+      }
     } catch (e) {
       debugPrint("Mermaid Init Error: $e");
     }
@@ -74,23 +134,25 @@ class _MermaidWidgetState extends State<MermaidWidget> {
 
   @override
   void dispose() {
-    _controller.dispose();
+    _controller?.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final ctrl = _controller;
     return Container(
-      height: 300,
+      key: ValueKey(_initializedContent),
+      height: 350,
       width: double.infinity,
       margin: const EdgeInsets.symmetric(vertical: 24),
       decoration: BoxDecoration(
-        color: const Color(0xFF0A0A0A),
+        color: const Color(0xFF0C0C0C),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.white10),
       ),
-      child: _initialized 
-          ? Webview(_controller)
+      child: (_initialized && ctrl != null)
+          ? Webview(ctrl)
           : const Center(child: CircularProgressIndicator(strokeWidth: 2)),
     );
   }
@@ -101,7 +163,10 @@ class LatexSyntax extends md.InlineSyntax {
 
   @override
   bool onMatch(md.InlineParser parser, Match match) {
-    parser.addNode(md.Element.text('latex', match[1]!));
+    final content = match.group(1);
+    if (content != null) {
+      parser.addNode(md.Element.text('latex', content));
+    }
     return true;
   }
 }
@@ -114,8 +179,10 @@ class LatexBlockSyntax extends md.BlockSyntax {
 
   @override
   md.Node parse(md.BlockParser parser) {
-    final match = pattern.firstMatch(parser.current.content)!;
-    final content = match.group(1) ?? "";
+    if (parser.isDone) return md.Text("");
+    final line = parser.current.content;
+    final match = pattern.firstMatch(line);
+    final content = match != null ? (match.group(1) ?? "") : "";
     parser.advance();
     return md.Element.text('latex-block', content);
   }
@@ -168,10 +235,26 @@ class NoteEditor extends StatefulWidget {
 
 class _NoteEditorState extends State<NoteEditor> {
   final FocusNode _editorFocusNode = FocusNode();
+  final FocusNode _keyboardFocusNode = FocusNode();
+  String? _lastPath;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final noteService = Provider.of<NoteService>(context);
+    final selectedNote = noteService.selectedNote;
+    
+    // Sync editor content only when the selected note actually changes
+    if (selectedNote != null && selectedNote.path != _lastPath) {
+      _lastPath = selectedNote.path;
+      widget.editorController.text = selectedNote.content;
+    }
+  }
 
   @override
   void dispose() {
     _editorFocusNode.dispose();
+    _keyboardFocusNode.dispose();
     super.dispose();
   }
 
@@ -218,7 +301,7 @@ class _NoteEditorState extends State<NoteEditor> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 32),
       child: KeyboardListener(
-        focusNode: FocusNode(), // Separate focus node for the listener
+        focusNode: _keyboardFocusNode, 
         onKeyEvent: _onKey,
         child: TextField(
           controller: widget.editorController,
@@ -261,11 +344,11 @@ class _NoteEditorState extends State<NoteEditor> {
     };
 
     if (pairings.containsKey(event.logicalKey)) {
-      final pair = pairings[event.logicalKey]!;
+      final pair = pairings[event.logicalKey] ?? "";
       final newText = text.replaceRange(selection.start, selection.start, pair);
       controller.value = TextEditingValue(
         text: newText,
-        selection: TextSelection.collapsed(offset: selection.start + 1),
+        selection: TextSelection.collapsed(offset: (selection.start + 1).clamp(0, newText.length)),
       );
       // We don't return here because we might want the default behavior to handle 
       // the first char, but actually we replaced the whole thing.
@@ -284,7 +367,7 @@ class _NoteEditorState extends State<NoteEditor> {
       
       final listMatch = RegExp(r'^(\s*[-*]\s+)').firstMatch(currentLine);
       if (listMatch != null) {
-        final prefix = listMatch.group(1)!;
+        final prefix = listMatch.group(1) ?? "";
         
         // If the line is ONLY the prefix, clear it (User wants to stop the list)
         if (currentLine.trim() == prefix.trim()) {
@@ -307,13 +390,14 @@ class _NoteEditorState extends State<NoteEditor> {
             imageDirectory: noteService.notesPath,
             selectable: true,
             extensionSet: md.ExtensionSet(
-              [const md.FencedCodeBlockSyntax(), LatexBlockSyntax(), const md.TableSyntax()],
+              [const MermaidBlockSyntax(), const md.FencedCodeBlockSyntax(), LatexBlockSyntax(), const md.TableSyntax()],
               [md.EmojiSyntax(), LatexSyntax(), md.AutolinkExtensionSyntax()],
             ),
+            key: ValueKey(noteService.selectedNote?.path ?? 'preview'),
             builders: {
               'latex': MathBuilder(isBlock: false),
               'latex-block': MathBuilder(isBlock: true),
-              'pre': MermaidBuilder(),
+              'mermaid': MermaidBuilder(),
             },
             onTapLink: (text, href, title) {
               if (href != null) {

@@ -117,7 +117,7 @@ class CarijoApp extends StatelessWidget {
           },
           child: Focus(
             autofocus: true,
-            child: child!,
+            child: child ?? const SizedBox(),
           ),
         );
       },

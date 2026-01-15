@@ -15,9 +15,10 @@ class BacklinksSidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final noteService = Provider.of<NoteService>(context);
-    if (noteService.selectedNote == null) return const SizedBox();
+    final selectedNote = noteService.selectedNote;
+    if (selectedNote == null) return const SizedBox();
     
-    final backlinks = noteService.getBacklinksFor(noteService.selectedNote!);
+    final backlinks = noteService.getBacklinksFor(selectedNote);
     if (backlinks.isEmpty) return const SizedBox();
 
     final theme = Provider.of<ThemeService>(context).theme;

@@ -83,12 +83,14 @@ class NoteService extends ChangeNotifier {
   }
 
   Future<void> refreshNotes() async {
-    if (_notesPath == null) return;
-    _isLoading = true;
-    notifyListeners();
-
     try {
-      final loadedNotes = await repository.getAllNotes(_notesPath!);
+      final path = _notesPath;
+      if (path == null) {
+        _isLoading = false;
+        notifyListeners();
+        return;
+      }
+      final loadedNotes = await repository.getAllNotes(path);
       loadedNotes.sort((a, b) => b.modified.compareTo(a.modified));
       _notes = loadedNotes;
       _buildFolderTree();
@@ -103,26 +105,28 @@ class NoteService extends ChangeNotifier {
   }
 
   Future<String?> addImageToNote(File imageFile) async {
-    if (_notesPath == null) return null;
-    return await repository.uploadImage(_notesPath!, imageFile);
+    final path = _notesPath;
+    if (path == null) return null;
+    return await repository.uploadImage(path, imageFile);
   }
 
   void _buildFolderTree() {
-    if (_notesPath == null) {
+    final path = _notesPath;
+    if (path == null) {
       _rootFolder = null;
       return;
     }
 
     final root = NoteFolder(
-      name: _notesPath!.split(RegExp(r'[/\\]')).last,
-      path: _notesPath!,
+      name: path.split(RegExp(r'[/\\]')).last,
+      path: path,
       subfolders: [],
       notes: [],
       isExpanded: true,
     );
 
     for (var note in _notes) {
-      final relativePath = note.path.substring(_notesPath!.length).replaceFirst(RegExp(r'^[/\\]'), '');
+      final relativePath = note.path.substring(path.length).replaceFirst(RegExp(r'^[/\\]'), '');
       if (relativePath.isEmpty) continue;
       
       final parts = relativePath.split(RegExp(r'[/\\]'));
@@ -227,6 +231,8 @@ class NoteService extends ChangeNotifier {
 
   Future<List<Note>> searchGlobal(String query) async {
     if (query.isEmpty) return [];
+    final path = _notesPath;
+    if (path == null) return [];
     return await repository.searchNotes(query);
   }
 
@@ -300,8 +306,9 @@ class NoteService extends ChangeNotifier {
   }
 
   Future<void> _scanTemplates() async {
-    if (_notesPath == null) return;
-    _templates = await repository.getTemplates(_notesPath!);
+    final path = _notesPath;
+    if (path == null) return;
+    _templates = await repository.getTemplates(path);
     notifyListeners();
   }
 
@@ -333,30 +340,38 @@ class NoteService extends ChangeNotifier {
   }
 
   Future<void> updateCurrentNote(String newContent) async {
-    if (_selectedNote == null) return;
-    if (!_autoSaveEnabledPaths.contains(_selectedNote!.path)) return;
+    final selected = _selectedNote;
+    if (selected == null) return;
+    if (!_autoSaveEnabledPaths.contains(selected.path)) return;
 
-    final updatedNote = await saveNoteUseCase(note: _selectedNote!, newContent: newContent);
+    final updatedNote = await saveNoteUseCase(note: selected, newContent: newContent);
     
-    final index = _notes.indexWhere((n) => n.path == _selectedNote!.path);
+    final index = _notes.indexWhere((n) => n.path == selected.path);
     if (index != -1) {
       _notes[index] = updatedNote;
-      _selectedNote = updatedNote;
+      // Only update _selectedNote if it hasn't changed to something else during the await
+      if (_selectedNote?.path == selected.path) {
+        _selectedNote = updatedNote;
+      }
       _buildTags();
       notifyListeners();
     }
   }
 
   Future<void> manualSaveCurrentNote(String content) async {
-    if (_selectedNote == null) return;
+    final selected = _selectedNote;
+    if (selected == null) return;
     
-    final updatedNote = await saveNoteUseCase(note: _selectedNote!, newContent: content);
-    _autoSaveEnabledPaths.add(_selectedNote!.path);
+    final updatedNote = await saveNoteUseCase(note: selected, newContent: content);
+    _autoSaveEnabledPaths.add(selected.path);
     
     await refreshNotes();
     
+    // Safety: only re-select if the path matches the one we just saved
     final latestNote = _notes.firstWhere((n) => n.path == updatedNote.path, orElse: () => updatedNote);
-    selectNote(latestNote);
+    if (_selectedNote?.path == selected.path) {
+      selectNote(latestNote);
+    }
     notifyListeners();
   }
 }

@@ -34,8 +34,10 @@ class _DeployScreenState extends State<DeployScreen> {
     final noteService = Provider.of<NoteService>(context, listen: false);
     final gitService = Provider.of<GitService>(context, listen: false);
     
-    if (noteService.notesPath != null) {
-      final files = await gitService.getGitStatus(noteService.notesPath!);
+    final path = noteService.notesPath;
+    if (path != null) {
+      final files = await gitService.getGitStatus(path);
+      if (!mounted) return;
       setState(() {
         _gitFiles = files;
         _isLoading = false;
@@ -57,8 +59,12 @@ class _DeployScreenState extends State<DeployScreen> {
       _diffContent = null;
     });
 
+    final notesPath = noteService.notesPath;
+    if (notesPath == null) return;
+
     try {
-      final diff = await gitService.getFileDiff(path, noteService.notesPath!);
+      final diff = await gitService.getFileDiff(path, notesPath);
+      if (!mounted) return;
       setState(() {
         _diffContent = diff;
         _isDiffLoading = false;
@@ -127,11 +133,11 @@ class _DeployScreenState extends State<DeployScreen> {
                   children: [
                     if (stagedFiles.isNotEmpty) ...[
                       _buildHeader("READY FOR PUSH", stagedFiles.length, accent),
-                      ...stagedFiles.map((f) => _buildFileItem(f, noteService.notesPath!)),
+                      ...stagedFiles.map((f) => _buildFileItem(f, noteService.notesPath ?? '')),
                     ],
                     if (unstagedFiles.isNotEmpty) ...[
                       _buildHeader("UNSTAGED CHANGES", unstagedFiles.length, textMuted),
-                      ...unstagedFiles.map((f) => _buildFileItem(f, noteService.notesPath!)),
+                      ...unstagedFiles.map((f) => _buildFileItem(f, noteService.notesPath ?? '')),
                     ],
                     if (_gitFiles.isEmpty)
                       Center(
@@ -160,7 +166,7 @@ class _DeployScreenState extends State<DeployScreen> {
                         border: Border.all(color: accent.withOpacity(0.3)),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: SelectableText(gitService.lastError!, style: GoogleFonts.jetBrainsMono(color: accent, fontSize: 12)),
+                      child: SelectableText(gitService.lastError ?? "Unknown Error", style: GoogleFonts.jetBrainsMono(color: accent, fontSize: 12)),
                     ),
                   )
                 else if (_diffContent != null)
@@ -183,7 +189,7 @@ class _DeployScreenState extends State<DeployScreen> {
                             child: SingleChildScrollView(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
-                                children: _diffContent!.split('\n').map((line) {
+                                children: (_diffContent ?? "").split('\n').map((line) {
                                   Color color = textMain;
                                   if (line.startsWith('+')) color = Colors.greenAccent;
                                   if (line.startsWith('-')) color = accent;
@@ -248,13 +254,16 @@ class _DeployScreenState extends State<DeployScreen> {
                               onPressed: (gitService.isSyncing || noteService.notesPath == null) 
                                 ? null 
                                 : () async {
-                                    await gitService.pushToBlog(
-                                      noteService.notesPath!, 
-                                      commitMessage: _commitController.text.isNotEmpty ? _commitController.text : null
-                                    );
-                                    if (gitService.lastError == null) {
-                                      _commitController.clear();
-                                      _refreshStatus();
+                                    final path = noteService.notesPath;
+                                    if (path != null) {
+                                      await gitService.pushToBlog(
+                                        path, 
+                                        commitMessage: _commitController.text.isNotEmpty ? _commitController.text : null
+                                      );
+                                      if (gitService.lastError == null) {
+                                        _commitController.clear();
+                                        _refreshStatus();
+                                      }
                                     }
                                   },
                               icon: gitService.isSyncing 

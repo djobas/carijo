@@ -139,7 +139,8 @@ class _FolderSidebarState extends State<FolderSidebar> {
                   );
                 }
 
-                if (noteService.rootFolder == null) return const SizedBox();
+                final root = noteService.rootFolder;
+                if (root == null) return const SizedBox();
 
                 if (noteService.filterTag != null || noteService.searchQuery.isNotEmpty) {
                   return ListView.builder(
@@ -150,7 +151,7 @@ class _FolderSidebarState extends State<FolderSidebar> {
 
                 return ListView(
                   children: [
-                    _buildFolderItem(noteService.rootFolder!, noteService, level: 0),
+                    _buildFolderItem(root, noteService, level: 0),
                   ],
                 );
               },

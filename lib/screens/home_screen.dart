@@ -54,8 +54,8 @@ class _HomeScreenState extends State<HomeScreen> {
     final text = _editorController.text;
     final selection = _editorController.selection;
 
-    if (noteService.selectedNote != null && 
-        text != noteService.selectedNote!.content) {
+    final selectedNote = noteService.selectedNote;
+    if (selectedNote != null && text != selectedNote.content) {
       noteService.updateCurrentNote(text);
     }
 
@@ -113,8 +113,6 @@ class _HomeScreenState extends State<HomeScreen> {
     final noteService = Provider.of<NoteService>(context);
     final theme = Provider.of<ThemeService>(context).theme;
 
-    _syncEditorWithSelection(noteService);
-
     return CallbackShortcuts(
       bindings: {
         SingleActivator(LogicalKeyboardKey.keyS, control: true): () {
@@ -165,6 +163,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         onHeading: () => _toggleLinePrefix("# "),
                         onTable: _insertTable,
                         onLink: () => _wrapSelection("[[", "]]"),
+                        onMermaid: _insertMermaid,
                       ),
                     
                     // Editor & Backlinks
@@ -260,7 +259,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildStatusBar(NoteService noteService, theme) {
     if (noteService.selectedNote == null) return const SizedBox();
-    final isAutoSave = noteService.isAutoSaveEnabled(noteService.selectedNote!.path);
+    final selectedNote = noteService.selectedNote;
+    if (selectedNote == null) return const SizedBox();
+    final isAutoSave = noteService.isAutoSaveEnabled(selectedNote.path);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
@@ -299,7 +300,10 @@ class _HomeScreenState extends State<HomeScreen> {
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("CANCEL", style: TextStyle(color: Colors.grey))),
           TextButton(
             onPressed: () {
-              noteService.deleteNote(noteService.selectedNote!);
+              final selected = noteService.selectedNote;
+              if (selected != null) {
+                noteService.deleteNote(selected);
+              }
               Navigator.pop(ctx);
             }, 
             child: Text("DELETE", style: TextStyle(color: Provider.of<ThemeService>(context, listen: false).theme.accent))
@@ -325,8 +329,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _pickAndInsertImage(NoteService noteService) async {
     final result = await FilePicker.platform.pickFiles(type: FileType.image);
-    if (result != null && result.files.single.path != null) {
-      final markdownLink = await noteService.addImageToNote(File(result.files.single.path!));
+    final path = result?.files.single.path;
+    if (result != null && path != null) {
+      final markdownLink = await noteService.addImageToNote(File(path));
       if (markdownLink != null) {
         final currentText = _editorController.text;
         final selection = _editorController.selection;
@@ -352,6 +357,18 @@ class _HomeScreenState extends State<HomeScreen> {
         : text.replaceRange(selection.start, selection.end, tableTemplate);
     _editorController.text = newText;
     _editorController.selection = TextSelection.collapsed(offset: selection.start + tableTemplate.length);
+  }
+
+  void _insertMermaid() {
+    const mermaidTemplate = "\n```mermaid\ngraph TD;\n    A-->B;\n    A-->C;\n    B-->D;\n    C-->D;\n```\n";
+    final text = _editorController.text;
+    final selection = _editorController.selection;
+    final newText = selection.start == -1 
+        ? "$text$mermaidTemplate" 
+        : text.replaceRange(selection.start, selection.end, mermaidTemplate);
+    _editorController.text = newText;
+    final cursorPos = selection.start == -1 ? newText.length : selection.start + mermaidTemplate.length;
+    _editorController.selection = TextSelection.collapsed(offset: cursorPos.clamp(0, newText.length));
   }
 
   void _wrapSelection(String prefix, [String? suffix]) {
@@ -455,7 +472,7 @@ class _HomeScreenState extends State<HomeScreen> {
     String tagsYaml = tagsList.isEmpty ? '[]' : '[${tagsList.join(', ')}]';
 
     if (match != null) {
-      String yaml = match.group(1)!;
+      String yaml = match.group(1) ?? "";
       yaml = yaml.contains(RegExp(r'^title:', multiLine: true)) ? yaml.replaceFirst(RegExp(r'^title:.*', multiLine: true), 'title: $newTitle') : 'title: $newTitle\n$yaml';
       yaml = yaml.contains(RegExp(r'^tags:', multiLine: true)) ? yaml.replaceFirst(RegExp(r'^tags:.*', multiLine: true), 'tags: $tagsYaml') : 'tags: $tagsYaml\n$yaml';
       yaml = yaml.contains(RegExp(r'^published:', multiLine: true)) ? yaml.replaceFirst(RegExp(r'^published:.*', multiLine: true), 'published: $published') : 'published: $published\n$yaml';

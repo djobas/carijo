@@ -150,10 +150,11 @@ class _GraphViewScreenState extends State<GraphViewScreen> with SingleTickerProv
           }
         },
         onPanUpdate: (details) {
-          if (_draggedNode != null) {
+          final dragged = _draggedNode;
+          if (dragged != null) {
             setState(() {
-              _draggedNode!.position = _getLocalPosition(details.globalPosition, context);
-              _draggedNode!.velocity = Offset.zero;
+              dragged.position = _getLocalPosition(details.globalPosition, context);
+              dragged.velocity = Offset.zero;
             });
           }
         },
@@ -245,7 +246,8 @@ class GraphPainter extends CustomPainter {
 
     // 2. Draw Nodes
     for (var node in nodes) {
-      final isHovered = hoverPos != null && (node.position - hoverPos!).distance < node.radius + 5;
+      final hp = hoverPos;
+      final isHovered = hp != null && (node.position - hp).distance < node.radius + 5;
       
       // Node Circle
       canvas.drawCircle(

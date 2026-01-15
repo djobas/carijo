@@ -85,18 +85,20 @@ class Note {
     if (match != null) {
       try {
         final yamlStr = match.group(1);
-        final yaml = loadYaml(yamlStr!);
-        if (yaml is Map) {
-          metadata = Map<String, dynamic>.from(yaml);
-          if (metadata.containsKey('title')) {
-            title = metadata['title'].toString();
-          }
-          if (metadata.containsKey('tags')) {
-            final dynamic yamlTags = metadata['tags'];
-            if (yamlTags is List) {
-              tags.addAll(yamlTags.map((t) => t.toString()));
-            } else if (yamlTags is String) {
-              tags.add(yamlTags);
+        if (yamlStr != null) {
+          final yaml = loadYaml(yamlStr);
+          if (yaml is Map) {
+            metadata = Map<String, dynamic>.from(yaml);
+            if (metadata.containsKey('title')) {
+              title = metadata['title'].toString();
+            }
+            if (metadata.containsKey('tags')) {
+              final dynamic yamlTags = metadata['tags'];
+              if (yamlTags is List) {
+                tags.addAll(yamlTags.map((t) => t.toString()));
+              } else if (yamlTags is String) {
+                tags.add(yamlTags);
+              }
             }
           }
         }
@@ -110,7 +112,7 @@ class Note {
       final RegExp h1Regex = RegExp(r'^#\s+(.*)$', multiLine: true);
       final h1Match = h1Regex.firstMatch(content);
       if (h1Match != null) {
-        title = h1Match.group(1)!.trim();
+        title = (h1Match.group(1) ?? "").trim();
       }
     }
 
@@ -118,14 +120,14 @@ class Note {
     final RegExp tagRegex = RegExp(r'#(\w+)');
     final tagMatches = tagRegex.allMatches(content);
     for (var m in tagMatches) {
-      tags.add(m.group(1)!);
+      tags.add(m.group(1) ?? "");
     }
 
     // 4. Extract outgoing links [[Title]]
     final RegExp linkRegex = RegExp(r'\[\[(.*?)\]\]');
     final linkMatches = linkRegex.allMatches(content);
     final List<String> outgoingLinks =
-        linkMatches.map((m) => m.group(1)!.trim()).toSet().toList();
+        linkMatches.map((m) => (m.group(1) ?? "").trim()).toSet().toList();
 
     return Note(
       title: title,
