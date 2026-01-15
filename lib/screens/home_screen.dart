@@ -132,14 +132,25 @@ class _HomeScreenState extends State<HomeScreen> {
                     _buildTopToolbar(context, noteService, theme),
                     if (_isEditing && noteService.selectedNote != null)
                       FormattingToolbar(
+                        onUndo: () {
+                          // Simple undo via controller value history (limited)
+                          // For full undo, would need UndoHistoryController
+                        },
+                        onRedo: () {
+                          // Simple redo placeholder
+                        },
                         onBold: () => _wrapSelection("**"),
                         onItalic: () => _wrapSelection("_"),
+                        onStrikethrough: () => _wrapSelection("~~"),
                         onCode: () => _wrapSelection("`"),
                         onBulletList: () => _toggleLinePrefix("- "),
                         onCheckboxList: () => _toggleLinePrefix("- [ ] "),
                         onHeading: () => _toggleLinePrefix("# "),
+                        onQuote: () => _toggleLinePrefix("> "),
                         onTable: _insertTable,
                         onLink: () => _wrapSelection("[[", "]]"),
+                        onDivider: _insertDivider,
+                        onImage: () => _pickAndInsertImage(noteService),
                       ),
                     
                     // Editor & Backlinks
@@ -333,6 +344,17 @@ class _HomeScreenState extends State<HomeScreen> {
         : text.replaceRange(selection.start, selection.end, tableTemplate);
     _editorController.text = newText;
     _editorController.selection = TextSelection.collapsed(offset: selection.start + tableTemplate.length);
+  }
+
+  void _insertDivider() {
+    const divider = "\n\n---\n\n";
+    final text = _editorController.text;
+    final selection = _editorController.selection;
+    final newText = selection.start == -1 
+        ? "$text$divider" 
+        : text.replaceRange(selection.start, selection.end, divider);
+    _editorController.text = newText;
+    _editorController.selection = TextSelection.collapsed(offset: (selection.start == -1 ? text.length : selection.start) + divider.length);
   }
 
   void _wrapSelection(String prefix, [String? suffix]) {

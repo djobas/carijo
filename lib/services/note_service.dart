@@ -263,10 +263,22 @@ class NoteService extends ChangeNotifier {
     
     String content = template.content;
     final now = DateTime.now();
-    final dateStr = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
     
+    // Date/Time variables
+    final dateStr = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
+    final timeStr = "${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}";
+    final datetimeStr = "$dateStr $timeStr";
+    final weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    final weekdayStr = weekdays[now.weekday % 7];
+    final uuid = DateTime.now().millisecondsSinceEpoch.toRadixString(36);
+    
+    // Apply all substitutions
     content = content.replaceAll('{{title}}', newNoteTitle);
     content = content.replaceAll('{{date}}', dateStr);
+    content = content.replaceAll('{{time}}', timeStr);
+    content = content.replaceAll('{{datetime}}', datetimeStr);
+    content = content.replaceAll('{{weekday}}', weekdayStr);
+    content = content.replaceAll('{{uuid}}', uuid);
     
     final filename = newNoteTitle.endsWith('.md') ? newNoteTitle : '$newNoteTitle.md';
     final path = "${_notesPath}${Platform.pathSeparator}$filename";
