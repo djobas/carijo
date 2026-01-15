@@ -42,6 +42,7 @@ class _GraphViewScreenState extends State<GraphViewScreen> with SingleTickerProv
         position: Offset(_random.nextDouble() * 800 + 400, _random.nextDouble() * 600 + 400),
         mass: 1.0 + (connections * 0.2),
         radius: 6.0 + (connections * 1.5).clamp(0, 20),
+        nodeColor: const Color(0xFFD93025), // Placeholder, will be updated in build
       ));
     }
 
@@ -54,6 +55,22 @@ class _GraphViewScreenState extends State<GraphViewScreen> with SingleTickerProv
         }
       }
     }
+  }
+
+  Color _getColorForNote(Note note, AppTheme theme) {
+    for (var tag in note.tags) {
+      final t = tag.toLowerCase();
+      if (t == 'daily' || t == '#daily') return const Color(0xFF3ECF8E);
+      if (t == 'project' || t == '#project') return const Color(0xFF6C9BF7);
+      if (t == 'idea' || t == '#idea') return const Color(0xFFBD93F9);
+      if (t == 'archive' || t == '#archive') return const Color(0xFF6272A4);
+    }
+    final cat = note.category?.toLowerCase() ?? '';
+    if (cat.contains('daily')) return const Color(0xFF3ECF8E);
+    if (cat.contains('project')) return const Color(0xFF6C9BF7);
+    if (cat.contains('idea')) return const Color(0xFFBD93F9);
+    if (cat.contains('archive')) return const Color(0xFF6272A4);
+    return theme.accent;
   }
 
   void _onTick(Duration elapsed) {
@@ -125,6 +142,11 @@ class _GraphViewScreenState extends State<GraphViewScreen> with SingleTickerProv
   @override
   Widget build(BuildContext context) {
     final theme = Provider.of<ThemeService>(context).theme;
+
+    // Assign category-based colors to nodes
+    for (var node in _nodes) {
+      node.nodeColor = _getColorForNote(node.note, theme);
+    }
 
     return Scaffold(
       backgroundColor: theme.bgMain,
@@ -205,6 +227,7 @@ class NodeData {
   Offset velocity = Offset.zero;
   final double mass;
   final double radius;
+  Color nodeColor; // Mutable for dynamic theming
   final List<NodeData> links = [];
 
   NodeData({
@@ -212,6 +235,7 @@ class NodeData {
     required this.position,
     required this.mass,
     required this.radius,
+    required this.nodeColor,
   });
 }
 
@@ -228,32 +252,50 @@ class GraphPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final edgePaint = Paint()
-      ..color = theme.borderColor.withValues(alpha: 0.2)
-      ..strokeWidth = 1.0;
-    
-    final nodePaint = Paint()
-      ..color = theme.accent
-      ..style = PaintingStyle.fill;
-
-    // 1. Draw Edges
+    // 1. Draw Edges with subtle gradient
     for (var node in nodes) {
       for (var linked in node.links) {
-        canvas.drawLine(node.position, linked.position, edgePaint);
+        final gradient = Paint()
+          ..shader = LinearGradient(
+            colors: [
+              node.nodeColor.withValues(alpha: 0.3),
+              linked.nodeColor.withValues(alpha: 0.3),
+            ],
+          ).createShader(Rect.fromPoints(node.position, linked.position));
+        canvas.drawLine(node.position, linked.position, gradient..strokeWidth = 1.5);
       }
     }
 
-    // 2. Draw Nodes
+    // 2. Draw Nodes with glow
     for (var node in nodes) {
       final hp = hoverPos;
       final isHovered = hp != null && (node.position - hp).distance < node.radius + 5;
+      final color = node.nodeColor;
       
-      // Node Circle
+      // Glow effect (outer shadow)
+      final glowPaint = Paint()
+        ..color = color.withValues(alpha: 0.25)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12);
+      canvas.drawCircle(node.position, node.radius * 1.5, glowPaint);
+      
+      // Main node circle
+      final nodePaint = Paint()
+        ..color = isHovered ? color : color.withValues(alpha: 0.9)
+        ..style = PaintingStyle.fill;
       canvas.drawCircle(
         node.position, 
-        node.radius * (isHovered ? 1.2 : 1.0), 
-        nodePaint..color = isHovered ? theme.accent : theme.accent.withValues(alpha: 0.8)
+        node.radius * (isHovered ? 1.3 : 1.0), 
+        nodePaint
       );
+      
+      // Highlight ring on hover
+      if (isHovered) {
+        final ringPaint = Paint()
+          ..color = theme.textMain.withValues(alpha: 0.5)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2;
+        canvas.drawCircle(node.position, node.radius * 1.5, ringPaint);
+      }
 
       // Label (only if important or hovered)
       if (node.mass > 1.2 || isHovered) {
@@ -269,7 +311,7 @@ class GraphPainter extends CustomPainter {
           textDirection: TextDirection.ltr,
         )..layout();
         
-        textPainter.paint(canvas, Offset(node.position.dx + node.radius + 4, node.position.dy - textPainter.height / 2));
+        textPainter.paint(canvas, Offset(node.position.dx + node.radius + 6, node.position.dy - textPainter.height / 2));
       }
     }
   }
