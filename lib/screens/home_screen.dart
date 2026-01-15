@@ -1,18 +1,21 @@
 import 'dart:io';
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:file_picker/file_picker.dart';
 import 'package:provider/provider.dart';
-import 'graph_view_screen.dart';
-import 'deploy_screen.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:google_fonts/google_fonts.dart';
+
 import '../services/note_service.dart';
-import '../domain/models/note.dart';
 import '../services/git_service.dart';
 import '../services/theme_service.dart';
 import '../widgets/command_palette.dart';
+import '../widgets/home/folder_sidebar.dart';
+import '../widgets/home/tags_sidebar.dart';
+import '../widgets/home/properties_sidebar.dart';
+import '../widgets/home/note_editor.dart';
+import '../widgets/home/formatting_toolbar.dart';
+import 'deploy_screen.dart';
+import 'graph_view_screen.dart';
 import 'settings_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -29,11 +32,11 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _tagsController = TextEditingController();
   final TextEditingController _categoryController = TextEditingController();
   final TextEditingController _slugController = TextEditingController();
+  
   bool _isPublished = false;
   bool _isEditing = true;
   String? _lastSelectedPath;
   bool _showProperties = false;
-  final Set<String> _expandedFolders = {};
 
   // Autocomplete state
   bool _showAutocomplete = false;
@@ -66,7 +69,6 @@ class _HomeScreenState extends State<HomeScreen> {
           _autocompleteQuery = "";
         });
       } else if (_showAutocomplete) {
-        // Update query or close if cursor moved back or link closed
         if (selection.start < _autocompleteCursorPos) {
           setState(() => _showAutocomplete = false);
         } else {
@@ -86,7 +88,6 @@ class _HomeScreenState extends State<HomeScreen> {
   void _syncEditorWithSelection(NoteService noteService) {
     final selectedNote = noteService.selectedNote;
     if (selectedNote != null && selectedNote.path != _lastSelectedPath) {
-      // Avoid triggering the listener while we programmatically update the text
       _editorController.removeListener(_onEditorChanged);
       _editorController.text = selectedNote.content;
       _titleController.text = selectedNote.title;
@@ -110,16 +111,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final noteService = Provider.of<NoteService>(context);
-    final themeService = Provider.of<ThemeService>(context);
-    final theme = themeService.theme;
-
-    // Local theme variables to replace the removed constants
-    final bgDark = theme.bgMain;
-    final bgSidebar = theme.bgSidebar;
-    final borderColor = theme.borderColor;
-    final textMain = theme.textMain;
-    final textMuted = theme.textMuted;
-    final accent = theme.accent;
+    final theme = Provider.of<ThemeService>(context).theme;
 
     _syncEditorWithSelection(noteService);
 
@@ -128,381 +120,187 @@ class _HomeScreenState extends State<HomeScreen> {
         SingleActivator(LogicalKeyboardKey.keyS, control: true): () {
           noteService.manualSaveCurrentNote(_editorController.text);
         },
-        SingleActivator(LogicalKeyboardKey.keyP, control: true, shift: true): () {
-          _showCommandPalette(context, noteService);
-        },
-        SingleActivator(LogicalKeyboardKey.keyK, control: true): () {
-          _showCommandPalette(context, noteService);
-        },
+        SingleActivator(LogicalKeyboardKey.keyK, control: true): () => _showCommandPalette(context, noteService),
+        SingleActivator(LogicalKeyboardKey.keyP, control: true, shift: true): () => _showCommandPalette(context, noteService),
       },
       child: Focus(
         autofocus: true,
         child: Scaffold(
-          backgroundColor: bgDark,
+          backgroundColor: theme.bgMain,
           body: Row(
             children: [
-              // ... (Sidebar code)
-              Container(
-                width: 280,
-                decoration: BoxDecoration(
-                  color: bgSidebar,
-                  border: Border(right: BorderSide(color: borderColor)),
-                ),
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(24.0),
-                      child: Row(
-                        children: [
-                          Icon(noteService.filterTag != null ? Icons.filter_alt : Icons.grid_view, color: accent),
-                          const SizedBox(width: 8),
-                          Text(
-                            noteService.filterTag != null ? "#${noteService.filterTag}" : "Inbox", 
-                            style: GoogleFonts.spaceGrotesk(color: textMain, fontSize: 20, fontWeight: FontWeight.bold)
-                          ),
-                          const Spacer(),
-                          if (noteService.filterTag != null)
-                            IconButton(
-                              onPressed: () => noteService.toggleTagFilter(null),
-                              icon: Icon(Icons.close, color: textMuted, size: 18),
-                              tooltip: "Clear Filter",
-                            )
-                          else ...[
-                            IconButton(
-                              onPressed: () => noteService.openDailyNote(),
-                              icon: Icon(Icons.calendar_today, color: textMuted, size: 18),
-                              tooltip: "Daily Note",
-                            ),
-                            IconButton(
-                              onPressed: () => Navigator.push(
-                                context, 
-                                MaterialPageRoute(builder: (_) => GraphViewScreen(notes: noteService.notes))
-                              ),
-                              icon: Icon(Icons.hub, color: textMuted, size: 18),
-                              tooltip: "Graph View",
-                            ),
-                            IconButton(
-                              onPressed: () => _showNewNoteOptions(context, noteService), 
-                              icon: Icon(Icons.add, color: textMuted, size: 20),
-                              tooltip: "New Note (Ctrl+N)",
-                            ),
-                          ]
-                        ],
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: bgSidebar.withOpacity(0.5),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: borderColor),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.search, color: textMuted, size: 18),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: TextField(
-                                controller: _searchController,
-                                onChanged: (value) => noteService.updateSearchQuery(value),
-                                style: GoogleFonts.jetBrainsMono(color: textMain, fontSize: 13),
-                                decoration: InputDecoration(
-                                  hintText: "Search notes...",
-                                  hintStyle: GoogleFonts.jetBrainsMono(color: textMuted),
-                                  border: InputBorder.none,
-                                  isDense: true,
-                                ),
-                              ),
-                            ),
-                            if (_searchController.text.isNotEmpty)
-                              IconButton(
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
-                                icon: Icon(Icons.close, color: textMuted, size: 16),
-                                onPressed: () {
-                                  _searchController.clear();
-                                  noteService.updateSearchQuery("");
-                                },
-                              )
-                          ],
-                        ),
-                      ),
-                    ),
-                    // Tags Section Mock
-                    if (noteService.allTags.isNotEmpty)
-                      _buildTagsSidebarList(context, noteService),
-                    // Note List
-                    Expanded(
-                      child: Consumer<NoteService>(
-                        builder: (context, noteService, _) {
-                          if (noteService.isLoading) return Center(child: CircularProgressIndicator(color: accent));
-                          if (noteService.notesPath == null) {
-                            return Center(
-                              child: TextButton(
-                                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())), 
-                                child: Text("Set Folder", style: TextStyle(color: accent))
-                              )
-                            );
-                          }
-                          
-                          if (noteService.rootFolder == null) return const SizedBox();
-                          
-                          // If filtering or searching, show flat list for clarity
-                          if (noteService.filterTag != null || noteService.searchQuery.isNotEmpty) {
-                            return ListView.builder(
-                              itemCount: noteService.notes.length,
-                              itemBuilder: (context, index) => _buildSimpleNoteItem(context, noteService.notes[index], noteService),
-                            );
-                          }
-
-                          return ListView(
-                            children: [
-                              _buildFolderItem(noteService.rootFolder!, noteService, level: 0),
-                            ],
-                          );
-                        },
-                      ),
-                    ),
-                    // Sidebar Footer
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(border: Border(top: BorderSide(color: borderColor))),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          InkWell(
-                            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())),
-                            child: Row(
-                              children: [
-                                Icon(Icons.settings, color: textMuted, size: 16),
-                                const SizedBox(width: 8),
-                                Text("Settings", style: GoogleFonts.jetBrainsMono(color: textMuted, fontSize: 12)),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  ],
-                ),
-              ),
-              
-              // Main Editor
-              Expanded(
-                child: Consumer<NoteService>(
-                  builder: (context, noteService, _) {
-                    if (noteService.selectedNote == null) {
-                      return Center(child: Text("Select a note", style: GoogleFonts.jetBrainsMono(color: textMuted)));
-                    }
-
-                    final isAutoSave = noteService.isAutoSaveEnabled(noteService.selectedNote!.path);
-
-                    return Column(
-                      children: [
-                        // Toolbar
-                        Container(
-                          height: 56,
-                          padding: const EdgeInsets.symmetric(horizontal: 24),
-                          child: Row(
-                            children: [
-                              IconButton(
-                                onPressed: () {
-                                  showDialog(
-                                    context: context,
-                                    builder: (ctx) => AlertDialog(
-                                      backgroundColor: const Color(0xFF1A1A1A),
-                                      title: Text("Delete Note?", style: GoogleFonts.spaceGrotesk(color: textMain)),
-                                      content: Text("This action cannot be undone.", style: GoogleFonts.jetBrainsMono(color: textMuted)),
-                                      actions: [
-                                        TextButton(onPressed: () => Navigator.pop(ctx), child: Text("CANCEL", style: TextStyle(color: textMuted))),
-                                        TextButton(
-                                          onPressed: () {
-                                            Provider.of<NoteService>(context, listen: false).deleteNote(noteService.selectedNote!);
-                                            Navigator.pop(ctx);
-                                          }, 
-                                          child: Text("DELETE", style: TextStyle(color: accent))
-                                        ),
-                                      ],
-                                    )
-                                  );
-                                }, 
-                                icon: Icon(Icons.delete_outline, color: textMuted, size: 20),
-                                tooltip: "Delete Note",
-                              ),
-                              const SizedBox(width: 12),
-                              IconButton(
-                                onPressed: () => _showCommandPalette(context, noteService),
-                                icon: Icon(Icons.search, color: textMuted, size: 20),
-                                tooltip: "Command Palette (Ctrl+Shift+P)",
-                              ),
-                              const SizedBox(width: 12),
-                              IconButton(
-                                onPressed: () => _pickAndInsertImage(noteService), 
-                                icon: Icon(Icons.image_outlined, color: textMuted, size: 20),
-                                tooltip: "Insert Image",
-                              ),
-                              const Spacer(),
-                              IconButton(
-                                onPressed: () => setState(() => _showProperties = !_showProperties), 
-                                icon: Icon(_showProperties ? Icons.info : Icons.info_outline, color: _showProperties ? accent : textMuted, size: 20),
-                                tooltip: "Show Properties",
-                              ),
-                              const SizedBox(width: 12),
-                              Text("Mode: ${_isEditing ? 'EDIT' : 'PREVIEW'}", style: GoogleFonts.jetBrainsMono(color: textMuted, fontSize: 10)),
-                              const SizedBox(width: 12),
-                              Switch(
-                                value: !_isEditing, 
-                                onChanged: (val) => setState(() => _isEditing = !val),
-                                activeColor: accent,
-                                activeTrackColor: accent.withOpacity(0.3),
-                                inactiveThumbColor: textMuted,
-                                inactiveTrackColor: borderColor,
-                              )
-                            ],
-                          ),
-                        ),
-                        Expanded(
-                          child: Stack(
-                            children: [
-                              if (_isEditing) 
-                                Column(
-                                  children: [
-                                    _buildFormattingToolbar(noteService),
-                                    Expanded(
-                                      child: Padding(
-                                        padding: const EdgeInsets.all(32.0),
-                                        child: TextField(
-                                          controller: _editorController,
-                                          maxLines: null,
-                                          expands: true,
-                                          style: GoogleFonts.jetBrainsMono(color: textMain, fontSize: 16, height: 1.6),
-                                          cursorColor: accent,
-                                          decoration: const InputDecoration(border: InputBorder.none),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                )
-                              else
-                                SingleChildScrollView(
-                                  padding: const EdgeInsets.all(32),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      MarkdownBody(
-                                        data: _editorController.text,
-                                        imageDirectory: noteService.notesPath,
-                                        onTapLink: (text, href, title) {
-                                          if (href != null) {
-                                            _navigateToNote(href);
-                                          } else {
-                                            _navigateToNote(text);
-                                          }
-                                        },
-                                        styleSheet: MarkdownStyleSheet(
-                                          p: GoogleFonts.spaceGrotesk(color: textMain.withOpacity(0.9), fontSize: 16, height: 1.6),
-                                          h1: GoogleFonts.spaceGrotesk(color: textMain, fontSize: 32, fontWeight: FontWeight.bold),
-                                          h2: GoogleFonts.spaceGrotesk(color: textMain, fontSize: 24, fontWeight: FontWeight.bold),
-                                          code: GoogleFonts.jetBrainsMono(backgroundColor: accent.withOpacity(0.1), color: accent),
-                                          codeblockDecoration: BoxDecoration(color: bgSidebar, borderRadius: BorderRadius.circular(4)),
-                                          checkbox: TextStyle(color: accent),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 64),
-                                      _buildBacklinksSection(context, noteService),
-                                    ],
-                                  ),
-                                ),
-                              
-                              if (_showAutocomplete)
-                                _buildAutocompleteOverlay(context, noteService),
-                            ],
-                          ),
-                        ),
-                    // Status Bar
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          Text("${_editorController.text.split(' ').length} words", style: GoogleFonts.jetBrainsMono(color: textMuted, fontSize: 12)),
-                          const SizedBox(width: 8),
-                          Container(width: 1, height: 12, color: borderColor),
-                          const SizedBox(width: 8),
-                          Icon(Icons.circle, size: 8, color: isAutoSave ? accent : textMuted),
-                          const SizedBox(width: 4),
-                          Text(
-                            isAutoSave ? "Autosave ON" : "CTRL+S to Save", 
-                            style: GoogleFonts.jetBrainsMono(
-                              color: isAutoSave ? textMain : textMuted, 
-                              fontSize: 12,
-                              fontWeight: isAutoSave ? FontWeight.normal : FontWeight.bold
-                            )
-                          ),
-                        ],
-                      ),
-                    )
-                  ],
-                );
-              },
-            ),
-          ),
-          if (_showProperties)
-            Consumer<NoteService>(
-              builder: (context, noteService, _) => _buildPropertiesSidebar(context, noteService),
-            ),
-        ],
-      ),
-    ),
-  ),
-);
-}
-
-  Widget _buildAutocompleteOverlay(BuildContext context, NoteService noteService) {
-    final theme = Provider.of<ThemeService>(context, listen: false).theme;
-    final filteredNotes = noteService.notes.where((n) => 
-      n.title.toLowerCase().contains(_autocompleteQuery.toLowerCase())
-    ).take(5).toList();
-
-    if (filteredNotes.isEmpty) return const SizedBox();
-
-    return Positioned(
-      top: 40,
-      left: 60,
-      child: Container(
-        width: 280,
-        decoration: BoxDecoration(
-          color: theme.bgSidebar,
-          border: Border.all(color: theme.borderColor),
-          borderRadius: BorderRadius.circular(4),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 8)]
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: filteredNotes.map((note) => InkWell(
-            onTap: () => _injectSelection(note.title),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: BoxDecoration(border: Border(bottom: BorderSide(color: theme.borderColor))),
-              child: Row(
+              // 1. Sidebar (Folders, Search, Tags)
+              Column(
                 children: [
-                  Icon(Icons.article_outlined, color: theme.textMuted, size: 16),
-                  const SizedBox(width: 12),
                   Expanded(
-                    child: Text(note.title, 
-                      maxLines: 1, 
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.jetBrainsMono(color: theme.textMain, fontSize: 13)
-                    )
+                    child: FolderSidebar(
+                      onNewNote: () => _showNewNoteOptions(context, noteService),
+                      onNoteSelected: (note) {
+                        noteService.selectNote(note);
+                        _editorController.text = note.content;
+                      },
+                      searchController: _searchController,
+                    ),
                   ),
+                  const TagsSidebar(),
                 ],
               ),
-            ),
-          )).toList(),
+
+              // 2. Main Editor Area
+              Expanded(
+                child: Column(
+                  children: [
+                    // Toolbar
+                    _buildTopToolbar(context, noteService, theme),
+                    if (_isEditing && noteService.selectedNote != null)
+                      FormattingToolbar(
+                        onBold: () => _wrapSelection("**"),
+                        onItalic: () => _wrapSelection("_"),
+                        onCode: () => _wrapSelection("`"),
+                        onBulletList: () => _toggleLinePrefix("- "),
+                        onCheckboxList: () => _toggleLinePrefix("- [ ] "),
+                        onHeading: () => _toggleLinePrefix("# "),
+                      ),
+                    
+                    // Editor & Backlinks
+                    Expanded(
+                      child: NoteEditor(
+                        editorController: _editorController,
+                        isEditing: _isEditing,
+                        showAutocomplete: _showAutocomplete,
+                        autocompleteQuery: _autocompleteQuery,
+                        autocompleteCursorPos: _autocompleteCursorPos,
+                        onNoteSelected: (note) {
+                          noteService.selectNote(note);
+                          _editorController.text = note.content;
+                        },
+                        onNavigateToNote: _navigateToNote,
+                        onInjectAutocomplete: _injectSelection,
+                      ),
+                    ),
+
+                    // Status Bar
+                    _buildStatusBar(noteService, theme),
+                  ],
+                ),
+              ),
+
+              // 3. Properties Sidebar (Conditional)
+              if (_showProperties)
+                PropertiesSidebar(
+                  titleController: _titleController,
+                  tagsController: _tagsController,
+                  categoryController: _categoryController,
+                  slugController: _slugController,
+                  isPublished: _isPublished,
+                  onPublishedChanged: (val) => setState(() => _isPublished = val),
+                  onClose: () => setState(() => _showProperties = false),
+                  onSaveMetadata: () => _updateNoteMetadata(noteService),
+                  onNavigateToNote: _navigateToNote,
+                ),
+            ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildTopToolbar(BuildContext context, NoteService noteService, theme) {
+    if (noteService.selectedNote == null) return const SizedBox(height: 56);
+    
+    return Container(
+      height: 56,
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      decoration: BoxDecoration(border: Border(bottom: BorderSide(color: theme.borderColor))),
+      child: Row(
+        children: [
+          IconButton(
+            onPressed: () => _confirmDelete(context, noteService), 
+            icon: Icon(Icons.delete_outline, color: theme.textMuted, size: 20),
+            tooltip: "Delete Note",
+          ),
+          const SizedBox(width: 12),
+          IconButton(
+            onPressed: () => _showCommandPalette(context, noteService),
+            icon: Icon(Icons.search, color: theme.textMuted, size: 20),
+            tooltip: "Command Palette (Ctrl+Shift+P)",
+          ),
+          const SizedBox(width: 12),
+          IconButton(
+            onPressed: () => _pickAndInsertImage(noteService), 
+            icon: Icon(Icons.image_outlined, color: theme.textMuted, size: 20),
+            tooltip: "Insert Image",
+          ),
+          const Spacer(),
+          IconButton(
+            onPressed: () => setState(() => _showProperties = !_showProperties), 
+            icon: Icon(_showProperties ? Icons.info : Icons.info_outline, color: _showProperties ? theme.accent : theme.textMuted, size: 20),
+            tooltip: "Show Properties",
+          ),
+          const SizedBox(width: 12),
+          Text("Mode: ${_isEditing ? 'EDIT' : 'PREVIEW'}", style: GoogleFonts.jetBrainsMono(color: theme.textMuted, fontSize: 10)),
+          const SizedBox(width: 12),
+          Switch(
+            value: !_isEditing, 
+            onChanged: (val) => setState(() => _isEditing = !val),
+            activeColor: theme.accent,
+            activeTrackColor: theme.accent.withOpacity(0.3),
+            inactiveThumbColor: theme.textMuted,
+            inactiveTrackColor: theme.borderColor,
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatusBar(NoteService noteService, theme) {
+    if (noteService.selectedNote == null) return const SizedBox();
+    final isAutoSave = noteService.isAutoSaveEnabled(noteService.selectedNote!.path);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      decoration: BoxDecoration(border: Border(top: BorderSide(color: theme.borderColor))),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: [
+          Text("${_editorController.text.split(RegExp(r'\s+')).where((s) => s.isNotEmpty).length} words", 
+              style: GoogleFonts.jetBrainsMono(color: theme.textMuted, fontSize: 12)),
+          const SizedBox(width: 8),
+          Container(width: 1, height: 12, color: theme.borderColor),
+          const SizedBox(width: 8),
+          Icon(Icons.circle, size: 8, color: isAutoSave ? theme.accent : theme.textMuted),
+          const SizedBox(width: 4),
+          Text(
+            isAutoSave ? "Autosave ON" : "CTRL+S to Save", 
+            style: GoogleFonts.jetBrainsMono(
+              color: isAutoSave ? theme.textMain : theme.textMuted, 
+              fontSize: 12,
+              fontWeight: isAutoSave ? FontWeight.normal : FontWeight.bold
+            )
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDelete(BuildContext context, NoteService noteService) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        title: Text("Delete Note?", style: GoogleFonts.spaceGrotesk(color: Colors.white)),
+        content: Text("This action cannot be undone.", style: GoogleFonts.jetBrainsMono(color: Colors.grey)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("CANCEL", style: TextStyle(color: Colors.grey))),
+          TextButton(
+            onPressed: () {
+              noteService.deleteNote(noteService.selectedNote!);
+              Navigator.pop(ctx);
+            }, 
+            child: Text("DELETE", style: TextStyle(color: Provider.of<ThemeService>(context, listen: false).theme.accent))
+          ),
+        ],
+      )
     );
   }
 
@@ -510,384 +308,34 @@ class _HomeScreenState extends State<HomeScreen> {
     final text = _editorController.text;
     final start = _autocompleteCursorPos;
     final end = _editorController.selection.start;
-    
-    // Replace the query part from [[ onwards
     final newText = text.replaceRange(start, end, "$title]]");
     
     _editorController.removeListener(_onEditorChanged);
     _editorController.text = newText;
     _editorController.selection = TextSelection.collapsed(offset: start + title.length + 2);
     _editorController.addListener(_onEditorChanged);
-    
-    // Sync with service
     Provider.of<NoteService>(context, listen: false).updateCurrentNote(newText);
-    
     setState(() => _showAutocomplete = false);
   }
 
-  Widget _buildPropertiesSidebar(BuildContext context, NoteService noteService) {
-    final note = noteService.selectedNote;
-    if (note == null) return const SizedBox();
-    
-    final theme = Provider.of<ThemeService>(context).theme;
-    const sidebarWidth = 300.0;
-    final bgSidebar = theme.bgSidebar;
-    final borderColor = theme.borderColor;
-    final textMain = theme.textMain;
-    final textMuted = theme.textMuted;
-    final accent = theme.accent;
-
-    return Container(
-      width: sidebarWidth,
-      decoration: BoxDecoration(
-        color: bgSidebar,
-        border: Border(left: BorderSide(color: borderColor)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Row(
-              children: [
-                Text("Properties", style: GoogleFonts.spaceGrotesk(color: textMain, fontSize: 18, fontWeight: FontWeight.bold)),
-                const Spacer(),
-                IconButton(
-                  onPressed: () => setState(() => _showProperties = false),
-                  icon: Icon(Icons.close, color: textMuted, size: 18),
-                )
-              ],
-            ),
-          ),
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
-              children: [
-                // Editable Title
-                Text("TITLE", style: GoogleFonts.spaceGrotesk(color: textMuted, fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _titleController,
-                  style: GoogleFonts.jetBrainsMono(color: textMain, fontSize: 13),
-                  decoration: InputDecoration(
-                    isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                    enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: borderColor)),
-                    focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: accent)),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                _buildPropertyField(context, "Path", note.path),
-                _buildPropertyField(context, "Modified", note.modified.toString().split('.')[0]),
-                const SizedBox(height: 24),
-                Text("TAGS", style: GoogleFonts.spaceGrotesk(color: textMuted, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _tagsController,
-                  style: GoogleFonts.jetBrainsMono(color: textMain, fontSize: 13),
-                  decoration: InputDecoration(
-                    isDense: true,
-                    hintText: "tag1, tag2",
-                    hintStyle: TextStyle(color: textMuted.withOpacity(0.5)),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                    enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: borderColor)),
-                    focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: accent)),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Text("CATEGORY", style: GoogleFonts.spaceGrotesk(color: textMuted, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _categoryController,
-                  style: GoogleFonts.jetBrainsMono(color: textMain, fontSize: 13),
-                  decoration: InputDecoration(
-                    isDense: true,
-                    hintText: "Ex: Blog, Projects",
-                    hintStyle: TextStyle(color: textMuted.withOpacity(0.5)),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                    enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: borderColor)),
-                    focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: accent)),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Text("CUSTOM SLUG", style: GoogleFonts.spaceGrotesk(color: textMuted, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _slugController,
-                  style: GoogleFonts.jetBrainsMono(color: textMain, fontSize: 13),
-                  decoration: InputDecoration(
-                    isDense: true,
-                    hintText: "seo-friendly-slug",
-                    hintStyle: TextStyle(color: textMuted.withOpacity(0.5)),
-                    contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                    enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: borderColor)),
-                    focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: accent)),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text("PUBLISHED TO BLOG", style: GoogleFonts.spaceGrotesk(color: textMuted, fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
-                    Switch(
-                      value: _isPublished,
-                      onChanged: (val) => setState(() => _isPublished = val),
-                      activeColor: const Color(0xFF3ECF8E), // Supabase green
-                      activeTrackColor: const Color(0xFF3ECF8E).withOpacity(0.2),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 32),
-                ElevatedButton(
-                  onPressed: () => _updateNoteMetadata(noteService),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: accent,
-                    foregroundColor: textMain,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                    minimumSize: const Size(double.infinity, 40),
-                  ),
-                  child: Text("SAVE METADATA", style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.bold, fontSize: 12)),
-                ),
-                if (note.outgoingLinks.isNotEmpty) ...[
-                  const SizedBox(height: 32),
-                  Text("OUTGOING LINKS", style: GoogleFonts.spaceGrotesk(color: textMuted, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
-                  const SizedBox(height: 12),
-                  ...note.outgoingLinks.map((link) => Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: InkWell(
-                      onTap: () {
-                        _navigateToNote(link);
-                        setState(() => _showProperties = false);
-                      },
-                      child: Row(
-                        children: [
-                          Icon(Icons.link, color: textMuted, size: 14),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(link, style: GoogleFonts.jetBrainsMono(color: accent, fontSize: 12), overflow: TextOverflow.ellipsis),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )),
-                ],
-                if (note.metadata.isNotEmpty) ...[
-                  const SizedBox(height: 32),
-                  Text("FRONTMATTER", style: GoogleFonts.spaceGrotesk(color: textMuted, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.1)),
-                  const SizedBox(height: 12),
-                  ...note.metadata.entries.where((e) => e.key != 'title').map((e) => _buildPropertyField(context, e.key, e.value.toString())),
-                ]
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSimpleNoteItem(BuildContext context, Note note, NoteService noteService) {
-    final theme = Provider.of<ThemeService>(context).theme;
-    final isSelected = noteService.selectedNote?.path == note.path;
-    final accent = theme.accent;
-    final textMain = theme.textMain;
-    final textMuted = theme.textMuted;
-
-    return InkWell(
-      onTap: () {
-        noteService.selectNote(note);
-        _editorController.text = note.content;
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          border: Border(left: BorderSide(color: isSelected ? accent : Colors.transparent, width: 2)),
-          color: isSelected ? accent.withOpacity(0.1) : null,
-        ),
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(note.title, 
-              maxLines: 1, 
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.jetBrainsMono(
-                color: textMain, 
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal
-              )
-            ),
-            const SizedBox(height: 4),
-            Text(note.content.substring(0, min(100, note.content.length)).replaceAll('\n', ' '),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.jetBrainsMono(color: textMuted, fontSize: 11)
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFolderItem(NoteFolder folder, NoteService noteService, {int level = 0}) {
-    final theme = Provider.of<ThemeService>(context).theme;
-    final accent = theme.accent;
-    final textMain = theme.textMain;
-    final textMuted = theme.textMuted;
-    final isExpanded = _expandedFolders.contains(folder.path) || folder.path == noteService.notesPath;
-    
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        InkWell(
-          onTap: () {
-            setState(() {
-              if (_expandedFolders.contains(folder.path)) {
-                _expandedFolders.remove(folder.path);
-              } else {
-                _expandedFolders.add(folder.path);
-              }
-            });
-          },
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(16.0 + (level * 12), 8, 16, 8),
-            child: Row(
-              children: [
-                Icon(
-                  isExpanded ? Icons.keyboard_arrow_down : Icons.keyboard_arrow_right,
-                  size: 16,
-                  color: textMuted,
-                ),
-                const SizedBox(width: 4),
-                Icon(
-                  isExpanded ? Icons.folder_open : Icons.folder,
-                  size: 16,
-                  color: accent.withOpacity(0.7),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    folder.name,
-                    style: GoogleFonts.spaceGrotesk(
-                      color: textMain,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        if (isExpanded) ...[
-          ...folder.subfolders.map((sub) => _buildFolderItem(sub, noteService, level: level + 1)),
-          ...folder.notes.map((note) => _buildNoteItem(note, noteService, level: level + 1)),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildNoteItem(Note note, NoteService noteService, {int level = 0}) {
-    final theme = Provider.of<ThemeService>(context).theme;
-    final accent = theme.accent;
-    final textMain = theme.textMain;
-    final textMuted = theme.textMuted;
-    final isSelected = noteService.selectedNote?.path == note.path;
-
-    return InkWell(
-      onTap: () {
-        noteService.selectNote(note);
-        _editorController.text = note.content;
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          border: Border(left: BorderSide(color: isSelected ? accent : Colors.transparent, width: 2)),
-          color: isSelected ? accent.withOpacity(0.1) : null,
-        ),
-        padding: EdgeInsets.fromLTRB(36.0 + (level * 12), 10, 16, 10),
-        child: Row(
-          children: [
-            Icon(Icons.description_outlined, size: 14, color: textMuted),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                note.title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.jetBrainsMono(
-                  color: textMain,
-                  fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Future<void> _pickAndInsertImage(NoteService noteService) async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.image,
-      allowMultiple: false,
-    );
-
+    final result = await FilePicker.platform.pickFiles(type: FileType.image);
     if (result != null && result.files.single.path != null) {
-      final imageFile = File(result.files.single.path!);
-      final markdownLink = await noteService.addImageToNote(imageFile);
-
+      final markdownLink = await noteService.addImageToNote(File(result.files.single.path!));
       if (markdownLink != null) {
         final currentText = _editorController.text;
         final selection = _editorController.selection;
+        final newText = selection.start == -1 
+            ? "$currentText\n$markdownLink\n" 
+            : currentText.replaceRange(selection.start, selection.end, markdownLink);
         
-        // If no selection or cursor at end, just append
-        if (selection.start == -1) {
-          _editorController.text = "$currentText\n$markdownLink\n";
-        } else {
-          final newText = currentText.replaceRange(selection.start, selection.end, markdownLink);
-          _editorController.text = newText;
-          // Position cursor after the link
+        _editorController.text = newText;
+        if (selection.start != -1) {
           _editorController.selection = TextSelection.collapsed(offset: selection.start + markdownLink.length);
         }
-        
-        // Save automatically if possible
         noteService.updateCurrentNote(_editorController.text);
       }
     }
-  }
-
-  Widget _buildFormattingToolbar(NoteService noteService) {
-    final theme = Provider.of<ThemeService>(context, listen: false).theme;
-    final textMuted = theme.textMuted;
-    final borderColor = theme.borderColor;
-
-    return Container(
-      height: 40,
-      decoration: BoxDecoration(
-        color: theme.bgSidebar,
-        border: Border(bottom: BorderSide(color: theme.borderColor)),
-      ),
-      child: Row(
-        children: [
-          const SizedBox(width: 24),
-          _buildToolbarBtn(Icons.format_bold, textMuted, () => _wrapSelection("**")),
-          _buildToolbarBtn(Icons.format_italic, textMuted, () => _wrapSelection("_")),
-          _buildToolbarBtn(Icons.code, textMuted, () => _wrapSelection("`")),
-          VerticalDivider(color: borderColor, indent: 10, endIndent: 10),
-          _buildToolbarBtn(Icons.format_list_bulleted, textMuted, () => _toggleLinePrefix("- ")),
-          _buildToolbarBtn(Icons.check_box_outlined, textMuted, () => _toggleLinePrefix("- [ ] ")),
-          _buildToolbarBtn(Icons.title, textMuted, () => _toggleLinePrefix("# ")),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildToolbarBtn(IconData icon, Color color, VoidCallback onPressed) {
-    return IconButton(
-      icon: Icon(icon, color: color, size: 18),
-      onPressed: onPressed,
-      hoverColor: color.withOpacity(0.1),
-      constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-      padding: EdgeInsets.zero,
-    );
   }
 
   void _wrapSelection(String prefix, [String? suffix]) {
@@ -895,42 +343,25 @@ class _HomeScreenState extends State<HomeScreen> {
     final text = _editorController.text;
     final selection = _editorController.selection;
     if (selection.start == -1) return;
-
     final selectedText = text.substring(selection.start, selection.end);
     final newText = text.replaceRange(selection.start, selection.end, "$prefix$selectedText$s");
-    
     _editorController.text = newText;
-    _editorController.selection = TextSelection(
-      baseOffset: selection.start + prefix.length,
-      extentOffset: selection.end + prefix.length,
-    );
+    _editorController.selection = TextSelection(baseOffset: selection.start + prefix.length, extentOffset: selection.end + prefix.length);
   }
 
   void _toggleLinePrefix(String prefix) {
     final text = _editorController.text;
     final selection = _editorController.selection;
     if (selection.start == -1) return;
-
-    // Find the start of the line
     int lineStart = text.lastIndexOf('\n', selection.start - 1) + 1;
     if (lineStart < 0) lineStart = 0;
-
-    final line = text.substring(lineStart, selection.end); // To handle multi-line if needed, but simple for now
-    
-    String newText;
-    if (line.startsWith(prefix)) {
-      newText = text.replaceRange(lineStart, lineStart + prefix.length, "");
-      _editorController.text = newText;
-      _editorController.selection = TextSelection.collapsed(offset: selection.start - prefix.length);
-    } else {
-      newText = text.replaceRange(lineStart, lineStart, prefix);
-      _editorController.text = newText;
-      _editorController.selection = TextSelection.collapsed(offset: selection.start + prefix.length);
-    }
+    final line = text.substring(lineStart, selection.end);
+    String newText = line.startsWith(prefix) ? text.replaceRange(lineStart, lineStart + prefix.length, "") : text.replaceRange(lineStart, lineStart, prefix);
+    _editorController.text = newText;
+    _editorController.selection = TextSelection.collapsed(offset: selection.start + (line.startsWith(prefix) ? -prefix.length : prefix.length));
   }
 
   void _showCommandPalette(BuildContext context, NoteService noteService) {
-    final gitService = Provider.of<GitService>(context, listen: false);
     showDialog(
       context: context,
       barrierColor: Colors.black.withOpacity(0.5),
@@ -963,38 +394,25 @@ class _HomeScreenState extends State<HomeScreen> {
                 controller: titleController,
                 style: GoogleFonts.jetBrainsMono(color: Colors.white),
                 autofocus: true,
-                decoration: InputDecoration(
-                  hintText: "Enter title...",
-                  hintStyle: TextStyle(color: Colors.grey[600]),
-                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.grey[800]!)),
-                  focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFFD93025))),
-                ),
+                decoration: const InputDecoration(hintText: "Enter title...", hintStyle: TextStyle(color: Colors.grey)),
               ),
               const SizedBox(height: 24),
               ListTile(
-                leading: const Icon(Icons.note_add, color: Colors.white70, size: 20),
-                title: Text("Empty Note", style: GoogleFonts.jetBrainsMono(color: Colors.white, fontSize: 13)),
+                leading: const Icon(Icons.note_add, color: Colors.white70),
+                title: const Text("Empty Note", style: TextStyle(color: Colors.white)),
                 onTap: () {
                   Navigator.pop(context);
                   noteService.createNewNote(title: titleController.text.isEmpty ? null : titleController.text);
                 },
               ),
-              if (noteService.templates.isNotEmpty) ...[
-                const Padding(
-                  padding: EdgeInsets.only(top: 8.0, bottom: 4.0),
-                  child: Divider(color: Color(0xFF2A2A2A)),
-                ),
-                ...noteService.templates.map((template) => ListTile(
-                  leading: const Icon(Icons.copy, color: Color(0xFFD93025), size: 18),
-                  title: Text(template.title, style: GoogleFonts.jetBrainsMono(color: Colors.white, fontSize: 13)),
-                  subtitle: Text("From template", style: GoogleFonts.jetBrainsMono(color: Colors.grey[600], fontSize: 10)),
-                  onTap: () {
-                    Navigator.pop(context);
-                    final newTitle = titleController.text.isEmpty ? template.title : titleController.text;
-                    noteService.createFromTemplate(template, newTitle);
-                  },
-                )).toList(),
-              ],
+              ...noteService.templates.map((template) => ListTile(
+                leading: const Icon(Icons.copy, color: Colors.red),
+                title: Text(template.title, style: const TextStyle(color: Colors.white)),
+                onTap: () {
+                  Navigator.pop(context);
+                  noteService.createFromTemplate(template, titleController.text.isEmpty ? template.title : titleController.text);
+                },
+              )),
             ],
           ),
         );
@@ -1004,231 +422,45 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _updateNoteMetadata(NoteService noteService) {
     if (noteService.selectedNote == null) return;
-    
     final newTitle = _titleController.text;
     final tagsList = _tagsController.text.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
     final published = _isPublished;
     final category = _categoryController.text.trim();
     final slug = _slugController.text.trim();
-    
     String content = _editorController.text;
 
-    // 1. Update or Create Frontmatter
     final RegExp frontmatterRegex = RegExp(r'^---\s*\n([\s\S]*?)\n---\s*\n');
     final match = frontmatterRegex.firstMatch(content);
-
-    // Prepare tags string for YAML
     String tagsYaml = tagsList.isEmpty ? '[]' : '[${tagsList.join(', ')}]';
 
     if (match != null) {
-      // We have existing frontmatter, replace specific keys or rebuild
       String yaml = match.group(1)!;
-      
-      // Title
-      if (yaml.contains(RegExp(r'^title:', multiLine: true))) {
-        yaml = yaml.replaceFirst(RegExp(r'^title:.*', multiLine: true), 'title: $newTitle');
-      } else {
-        yaml = 'title: $newTitle\n$yaml';
-      }
-      
-      // Tags
-      if (yaml.contains(RegExp(r'^tags:', multiLine: true))) {
-        yaml = yaml.replaceFirst(RegExp(r'^tags:.*', multiLine: true), 'tags: $tagsYaml');
-      } else {
-        yaml = 'tags: $tagsYaml\n$yaml';
-      }
-      
-      // Published
-      if (yaml.contains(RegExp(r'^published:', multiLine: true))) {
-        yaml = yaml.replaceFirst(RegExp(r'^published:.*', multiLine: true), 'published: $published');
-      } else {
-        yaml = 'published: $published\n$yaml';
-      }
-
-      // Category
-      if (yaml.contains(RegExp(r'^category:', multiLine: true))) {
-        yaml = yaml.replaceFirst(RegExp(r'^category:.*', multiLine: true), 'category: $category');
-      } else if (category.isNotEmpty) {
-        yaml = 'category: $category\n$yaml';
-      }
-
-      // Slug
-      if (yaml.contains(RegExp(r'^slug:', multiLine: true))) {
-        yaml = yaml.replaceFirst(RegExp(r'^slug:.*', multiLine: true), 'slug: $slug');
-      } else if (slug.isNotEmpty) {
-        yaml = 'slug: $slug\n$yaml';
-      }
-      
+      yaml = yaml.contains(RegExp(r'^title:', multiLine: true)) ? yaml.replaceFirst(RegExp(r'^title:.*', multiLine: true), 'title: $newTitle') : 'title: $newTitle\n$yaml';
+      yaml = yaml.contains(RegExp(r'^tags:', multiLine: true)) ? yaml.replaceFirst(RegExp(r'^tags:.*', multiLine: true), 'tags: $tagsYaml') : 'tags: $tagsYaml\n$yaml';
+      yaml = yaml.contains(RegExp(r'^published:', multiLine: true)) ? yaml.replaceFirst(RegExp(r'^published:.*', multiLine: true), 'published: $published') : 'published: $published\n$yaml';
+      if (category.isNotEmpty) yaml = yaml.contains(RegExp(r'^category:', multiLine: true)) ? yaml.replaceFirst(RegExp(r'^category:.*', multiLine: true), 'category: $category') : 'category: $category\n$yaml';
+      if (slug.isNotEmpty) yaml = yaml.contains(RegExp(r'^slug:', multiLine: true)) ? yaml.replaceFirst(RegExp(r'^slug:.*', multiLine: true), 'slug: $slug') : 'slug: $slug\n$yaml';
       content = content.replaceRange(match.start, match.end, '---\n$yaml\n---\n');
     } else {
-      // No frontmatter, create it
       String yamlContent = 'title: $newTitle\ntags: $tagsYaml\npublished: $published';
       if (category.isNotEmpty) yamlContent += '\ncategory: $category';
       if (slug.isNotEmpty) yamlContent += '\nslug: $slug';
-      
-      final String newFrontmatter = '---\n$yamlContent\n---\n\n';
-      
-      // Remove existing H1 if it was the source of the title
-      final RegExp h1Regex = RegExp(r'^#\s+.*$', multiLine: true);
-      if (h1Regex.hasMatch(content)) {
-        content = content.replaceFirst(h1Regex, '').trimLeft();
-      }
-      
-      content = newFrontmatter + content;
+      content = '---\n$yamlContent\n---\n\n' + content.replaceFirst(RegExp(r'^#\s+.*$', multiLine: true), '').trimLeft();
     }
 
-    // 2. Save and Refresh UI
     _editorController.text = content;
     noteService.manualSaveCurrentNote(content);
     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Metadata updated")));
   }
 
-  Widget _buildPropertyField(BuildContext context, String label, String value) {
-    final theme = Provider.of<ThemeService>(context, listen: false).theme;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(label.toUpperCase(), style: GoogleFonts.spaceGrotesk(color: theme.textMuted, fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
-          const SizedBox(height: 6),
-          Text(value, 
-            style: GoogleFonts.jetBrainsMono(color: theme.textMain, fontSize: 12),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBacklinksSection(BuildContext context, NoteService noteService) {
-    if (noteService.selectedNote == null) return const SizedBox();
-    
-    final backlinks = noteService.getBacklinksFor(noteService.selectedNote!);
-    if (backlinks.isEmpty) return const SizedBox();
-
-    final theme = Provider.of<ThemeService>(context).theme;
-    final textMuted = theme.textMuted;
-    final accent = theme.accent;
-    final textMain = theme.textMain;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(Icons.link, color: accent, size: 16),
-            const SizedBox(width: 8),
-            Text("LINKED MENTIONS", style: GoogleFonts.spaceGrotesk(color: textMuted, fontSize: 12, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Column(
-          children: backlinks.map((match) => InkWell(
-            onTap: () {
-              noteService.selectNote(match.note);
-              _editorController.text = match.note.content;
-            },
-            child: Container(
-              width: double.infinity,
-              margin: const EdgeInsets.only(bottom: 12),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: theme.bgSidebar,
-                border: Border.all(color: theme.borderColor),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(match.note.title, style: GoogleFonts.jetBrainsMono(color: textMain, fontSize: 12, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 6),
-                  Text(
-                    match.snippet, 
-                    style: GoogleFonts.jetBrainsMono(color: textMuted, fontSize: 10, height: 1.4),
-                    maxLines: 3,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
-          )).toList(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTagsSidebarList(BuildContext context, NoteService noteService) {
-    final theme = Provider.of<ThemeService>(context).theme;
-    final textMuted = theme.textMuted;
-    final textMain = theme.textMain;
-    final accent = theme.accent;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-          child: Text("TAGS", style: GoogleFonts.spaceGrotesk(color: textMuted, fontSize: 9, fontWeight: FontWeight.bold, letterSpacing: 1.2)),
-        ),
-        SizedBox(
-          height: 80,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            children: noteService.allTags.keys.map((tag) {
-              final isFiltered = noteService.filterTag == tag;
-              return Center(
-                child: InkWell(
-                  onTap: () => noteService.toggleTagFilter(tag),
-                  child: Container(
-                    margin: const EdgeInsets.only(right: 8),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: isFiltered ? accent.withOpacity(0.2) : theme.bgSidebar,
-                      borderRadius: BorderRadius.circular(4),
-                      border: isFiltered ? Border.all(color: accent) : Border.all(color: theme.borderColor),
-                    ),
-                    child: Text("#$tag", style: GoogleFonts.jetBrainsMono(
-                      color: isFiltered ? textMain : textMain.withOpacity(0.7), 
-                      fontSize: 10,
-                      fontWeight: isFiltered ? FontWeight.bold : FontWeight.normal
-                    )),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-        ),
-        Divider(color: theme.borderColor, height: 32, indent: 24, endIndent: 24),
-      ],
-    );
-  }
-
   void _navigateToNote(String titleOrPath) {
     final noteService = Provider.of<NoteService>(context, listen: false);
-    
-    // Try by title or path
-    Note? note;
     try {
-      note = noteService.notes.firstWhere(
-        (n) => n.title.toLowerCase() == titleOrPath.toLowerCase() || 
-               n.path.endsWith(titleOrPath) ||
-               n.path.replaceAll('.md', '').endsWith(titleOrPath),
-        orElse: () => throw Exception("Not found"),
-      );
-    } catch (_) {
-      note = null;
-    }
-
-    if (note != null) {
+      final note = noteService.notes.firstWhere((n) => n.title.toLowerCase() == titleOrPath.toLowerCase() || n.path.endsWith(titleOrPath));
       noteService.selectNote(note);
       _editorController.text = note.content;
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Note not found: $titleOrPath"))
-      );
+    } catch (_) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Note not found: $titleOrPath")));
     }
   }
 }
