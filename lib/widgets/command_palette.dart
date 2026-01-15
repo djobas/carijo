@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../services/note_service.dart';
+import '../domain/models/note.dart';
 import '../services/theme_service.dart';
 import '../screens/graph_view_screen.dart';
 import '../screens/deploy_screen.dart';

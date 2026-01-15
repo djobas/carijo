@@ -3,55 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:yaml/yaml.dart';
 import 'package:path/path.dart' as p;
+export '../domain/models/note.dart';
+import '../domain/models/note.dart';
 
-class Note {
-  final String title;
-  final String content;
-  final String path;
-  final DateTime modified;
-  final Map<String, dynamic> metadata;
-  final List<String> tags;
-  final List<String> outgoingLinks;
-  final bool isPublished;
-  final String? category;
-  final String? slug;
-
-  Note({
-    required this.title, 
-    required this.content, 
-    required this.path, 
-    required this.modified,
-    this.metadata = const {},
-    this.tags = const [],
-    this.outgoingLinks = const [],
-    this.isPublished = false,
-    this.category,
-    this.slug,
-  });
-}
-
-class NoteFolder {
-  final String name;
-  final String path;
-  final List<NoteFolder> subfolders;
-  final List<Note> notes;
-  bool isExpanded;
-
-  NoteFolder({
-    required this.name,
-    required this.path,
-    required this.subfolders,
-    required this.notes,
-    this.isExpanded = false,
-  });
-}
-
-class BacklinkMatch {
-  final Note note;
-  final String snippet;
-
-  BacklinkMatch({required this.note, required this.snippet});
-}
+// Models moved to lib/domain/models/note.dart
 
 class NoteService extends ChangeNotifier {
   String? _notesPath;

@@ -2,6 +2,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/note_service.dart';
+import '../domain/models/note.dart';
 
 class GraphViewScreen extends StatefulWidget {
   final List<Note> notes;

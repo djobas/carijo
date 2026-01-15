@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../services/note_service.dart';
+import '../domain/models/note.dart';
 
 class QuickCaptureDialog extends StatefulWidget {
   const QuickCaptureDialog({super.key});

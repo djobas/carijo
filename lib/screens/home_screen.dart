@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import 'graph_view_screen.dart';
 import 'deploy_screen.dart';
 import '../services/note_service.dart';
+import '../domain/models/note.dart';
 import '../services/git_service.dart';
 import '../services/theme_service.dart';
 import '../widgets/command_palette.dart';
