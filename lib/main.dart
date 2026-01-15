@@ -14,23 +14,31 @@ import 'domain/use_cases/search_notes_use_case.dart';
 import 'domain/use_cases/get_backlinks_use_case.dart';
 import 'domain/use_cases/save_note_use_case.dart';
 
+import 'data/repositories/supabase_note_repository.dart';
+import 'domain/use_cases/sync_notes_use_case.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  final supabaseService = SupabaseService();
-  await supabaseService.initialize();
+  final noteRepository = FileNoteRepository();
+  final supabaseRepository = SupabaseNoteRepository();
+  final syncUseCase = SyncNotesUseCase(supabaseRepository);
 
-  final repository = FileNoteRepository();
+  final supabaseService = SupabaseService(
+    repository: supabaseRepository,
+    syncUseCase: syncUseCase,
+  );
+  await supabaseService.initialize();
 
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(
           create: (_) => NoteService(
-            repository: repository,
+            repository: noteRepository,
             searchUseCase: SearchNotesUseCase(),
             getBacklinksUseCase: GetBacklinksUseCase(),
-            saveNoteUseCase: SaveNoteUseCase(repository),
+            saveNoteUseCase: SaveNoteUseCase(noteRepository),
           ),
         ),
         ChangeNotifierProvider(create: (_) => GitService()),

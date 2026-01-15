@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'note_service.dart';
 import '../domain/models/note.dart';
+import '../domain/repositories/remote_note_repository.dart';
+import '../domain/use_cases/sync_notes_use_case.dart';
 
 class SupabaseService extends ChangeNotifier {
+  final RemoteNoteRepository repository;
+  final SyncNotesUseCase syncUseCase;
+
   bool _isSyncing = false;
   bool get isSyncing => _isSyncing;
 
@@ -16,6 +20,11 @@ class SupabaseService extends ChangeNotifier {
 
   static const String keyUrl = 'supabase_url';
   static const String keyAnonKey = 'supabase_anon_key';
+
+  SupabaseService({
+    required this.repository,
+    required this.syncUseCase,
+  });
 
   Future<void> initialize() async {
     final prefs = await SharedPreferences.getInstance();
@@ -29,8 +38,6 @@ class SupabaseService extends ChangeNotifier {
     }
 
     try {
-      // If already initialized by Supabase.initialize, we don't need to do it again
-      // But we need to handle potential re-initialization if config changes
       await Supabase.initialize(
         url: url,
         anonKey: anonKey,
@@ -58,21 +65,7 @@ class SupabaseService extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final client = Supabase.instance.client;
-      
-      // Upsert note by path (unique identifier)
-      await client.from('notes').upsert({
-        'title': note.title,
-        'content': note.content,
-        'path': note.path,
-        'modified_at': note.modified.toIso8601String(),
-        'tags': note.tags,
-        'metadata': note.metadata,
-        'is_published': note.isPublished,
-        'category': note.category,
-        'slug': note.slug,
-      }, onConflict: 'path');
-
+      await syncUseCase.publishSingle(note);
     } catch (e) {
       _lastError = e.toString();
       rethrow;
@@ -90,21 +83,7 @@ class SupabaseService extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final client = Supabase.instance.client;
-      
-      final List<Map<String, dynamic>> data = notes.map((note) => {
-        'title': note.title,
-        'content': note.content,
-        'path': note.path,
-        'modified_at': note.modified.toIso8601String(),
-        'tags': note.tags,
-        'metadata': note.metadata,
-        'is_published': note.isPublished,
-        'category': note.category,
-        'slug': note.slug,
-      }).toList();
-
-      await client.from('notes').upsert(data, onConflict: 'path');
+      await syncUseCase(notes);
     } catch (e) {
       _lastError = e.toString();
       rethrow;
