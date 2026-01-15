@@ -1,11 +1,23 @@
 import 'package:yaml/yaml.dart';
+import 'package:isar/isar.dart';
 
+part 'note.g.dart';
+
+@collection
 class Note {
+  Id get id => fastHash(path);
+
   final String title;
   final String content;
+  
+  @Index(unique: true, replace: true)
   final String path;
+  
   final DateTime modified;
+  
+  @ignore
   final Map<String, dynamic> metadata;
+  
   final List<String> tags;
   final List<String> outgoingLinks;
   final bool isPublished;
@@ -148,4 +160,20 @@ class BacklinkMatch {
   final String snippet;
 
   BacklinkMatch({required this.note, required this.snippet});
+}
+
+/// FNV-1a 64bit hash algorithm.
+int fastHash(String string) {
+  var hash = 0xcbf29ce484222325;
+
+  var i = 0;
+  while (i < string.length) {
+    final codeUnit = string.codeUnitAt(i++);
+    hash ^= codeUnit >> 8;
+    hash *= 0x100000001b3;
+    hash ^= codeUnit & 0xFF;
+    hash *= 0x100000001b3;
+  }
+
+  return hash;
 }

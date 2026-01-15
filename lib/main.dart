@@ -16,12 +16,19 @@ import 'domain/use_cases/save_note_use_case.dart';
 
 import 'data/repositories/supabase_note_repository.dart';
 import 'data/repositories/shell_git_repository.dart';
+import 'data/repositories/indexed_note_repository.dart';
+import 'data/services/isar_database.dart';
 import 'domain/use_cases/sync_notes_use_case.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  final noteRepository = FileNoteRepository();
+  final isarDb = IsarDatabase();
+  await isarDb.initialize();
+
+  final fileRepository = FileNoteRepository();
+  final noteRepository = IndexedNoteRepository(fileRepository, isarDb);
+  
   final supabaseRepository = SupabaseNoteRepository();
   final gitRepository = ShellGitRepository();
   final syncUseCase = SyncNotesUseCase(supabaseRepository);
