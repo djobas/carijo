@@ -58,4 +58,9 @@ class IndexedNoteRepository implements NoteRepository {
   Future<String?> uploadImage(String rootPath, File imageFile) async {
     return await _fileRepository.uploadImage(rootPath, imageFile);
   }
+
+  @override
+  Future<List<Note>> searchNotes(String query) async {
+    return await _isarDatabase.searchNotes(query);
+  }
 }

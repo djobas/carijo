@@ -21,7 +21,10 @@ class MockNoteRepository implements NoteRepository {
   Future<void> deleteNote(String path) async {}
 
   @override
-  Future<List<Note>> getTemplates(String rootPath) async => [];
+  Future<List<Note>> getTemplates(String path) async => [];
+
+  @override
+  Future<List<Note>> searchNotes(String query) async => [];
 
   @override
   Future<String?> uploadImage(String rootPath, File imageFile) async => null;

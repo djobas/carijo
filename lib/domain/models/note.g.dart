@@ -69,6 +69,32 @@ const NoteSchema = CollectionSchema(
   deserializeProp: _noteDeserializeProp,
   idName: r'id',
   indexes: {
+    r'title': IndexSchema(
+      id: -7636685945352118059,
+      name: r'title',
+      unique: false,
+      replace: false,
+      properties: [
+        IndexPropertySchema(
+          name: r'title',
+          type: IndexType.value,
+          caseSensitive: false,
+        )
+      ],
+    ),
+    r'content': IndexSchema(
+      id: 6193209363630369380,
+      name: r'content',
+      unique: false,
+      replace: false,
+      properties: [
+        IndexPropertySchema(
+          name: r'content',
+          type: IndexType.value,
+          caseSensitive: false,
+        )
+      ],
+    ),
     r'path': IndexSchema(
       id: 8756705481922369689,
       name: r'path',
@@ -266,6 +292,22 @@ extension NoteQueryWhereSort on QueryBuilder<Note, Note, QWhere> {
       return query.addWhereClause(const IdWhereClause.any());
     });
   }
+
+  QueryBuilder<Note, Note, QAfterWhere> anyTitle() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(
+        const IndexWhereClause.any(indexName: r'title'),
+      );
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterWhere> anyContent() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(
+        const IndexWhereClause.any(indexName: r'content'),
+      );
+    });
+  }
 }
 
 extension NoteQueryWhere on QueryBuilder<Note, Note, QWhereClause> {
@@ -331,6 +373,275 @@ extension NoteQueryWhere on QueryBuilder<Note, Note, QWhereClause> {
         upper: upperId,
         includeUpper: includeUpper,
       ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterWhereClause> titleEqualTo(String title) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'title',
+        value: [title],
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterWhereClause> titleNotEqualTo(String title) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'title',
+              lower: [],
+              upper: [title],
+              includeUpper: false,
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'title',
+              lower: [title],
+              includeLower: false,
+              upper: [],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'title',
+              lower: [title],
+              includeLower: false,
+              upper: [],
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'title',
+              lower: [],
+              upper: [title],
+              includeUpper: false,
+            ));
+      }
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterWhereClause> titleGreaterThan(
+    String title, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'title',
+        lower: [title],
+        includeLower: include,
+        upper: [],
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterWhereClause> titleLessThan(
+    String title, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'title',
+        lower: [],
+        upper: [title],
+        includeUpper: include,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterWhereClause> titleBetween(
+    String lowerTitle,
+    String upperTitle, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'title',
+        lower: [lowerTitle],
+        includeLower: includeLower,
+        upper: [upperTitle],
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterWhereClause> titleStartsWith(
+      String TitlePrefix) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'title',
+        lower: [TitlePrefix],
+        upper: ['$TitlePrefix\u{FFFFF}'],
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterWhereClause> titleIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'title',
+        value: [''],
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterWhereClause> titleIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.lessThan(
+              indexName: r'title',
+              upper: [''],
+            ))
+            .addWhereClause(IndexWhereClause.greaterThan(
+              indexName: r'title',
+              lower: [''],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.greaterThan(
+              indexName: r'title',
+              lower: [''],
+            ))
+            .addWhereClause(IndexWhereClause.lessThan(
+              indexName: r'title',
+              upper: [''],
+            ));
+      }
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterWhereClause> contentEqualTo(String content) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'content',
+        value: [content],
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterWhereClause> contentNotEqualTo(
+      String content) {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'content',
+              lower: [],
+              upper: [content],
+              includeUpper: false,
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'content',
+              lower: [content],
+              includeLower: false,
+              upper: [],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'content',
+              lower: [content],
+              includeLower: false,
+              upper: [],
+            ))
+            .addWhereClause(IndexWhereClause.between(
+              indexName: r'content',
+              lower: [],
+              upper: [content],
+              includeUpper: false,
+            ));
+      }
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterWhereClause> contentGreaterThan(
+    String content, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'content',
+        lower: [content],
+        includeLower: include,
+        upper: [],
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterWhereClause> contentLessThan(
+    String content, {
+    bool include = false,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'content',
+        lower: [],
+        upper: [content],
+        includeUpper: include,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterWhereClause> contentBetween(
+    String lowerContent,
+    String upperContent, {
+    bool includeLower = true,
+    bool includeUpper = true,
+  }) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'content',
+        lower: [lowerContent],
+        includeLower: includeLower,
+        upper: [upperContent],
+        includeUpper: includeUpper,
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterWhereClause> contentStartsWith(
+      String ContentPrefix) {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.between(
+        indexName: r'content',
+        lower: [ContentPrefix],
+        upper: ['$ContentPrefix\u{FFFFF}'],
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterWhereClause> contentIsEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      return query.addWhereClause(IndexWhereClause.equalTo(
+        indexName: r'content',
+        value: [''],
+      ));
+    });
+  }
+
+  QueryBuilder<Note, Note, QAfterWhereClause> contentIsNotEmpty() {
+    return QueryBuilder.apply(this, (query) {
+      if (query.whereSort == Sort.asc) {
+        return query
+            .addWhereClause(IndexWhereClause.lessThan(
+              indexName: r'content',
+              upper: [''],
+            ))
+            .addWhereClause(IndexWhereClause.greaterThan(
+              indexName: r'content',
+              lower: [''],
+            ));
+      } else {
+        return query
+            .addWhereClause(IndexWhereClause.greaterThan(
+              indexName: r'content',
+              lower: [''],
+            ))
+            .addWhereClause(IndexWhereClause.lessThan(
+              indexName: r'content',
+              upper: [''],
+            ));
+      }
     });
   }
 

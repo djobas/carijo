@@ -225,6 +225,11 @@ class NoteService extends ChangeNotifier {
     return results.map((e) => e.key).toList();
   }
 
+  Future<List<Note>> searchGlobal(String query) async {
+    if (query.isEmpty) return [];
+    return await repository.searchNotes(query);
+  }
+
   void selectNote(Note note) {
     _selectedNote = note;
     notifyListeners();

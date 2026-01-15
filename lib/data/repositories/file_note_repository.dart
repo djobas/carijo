@@ -85,4 +85,11 @@ class FileNoteRepository implements NoteRepository {
     }
     return loadedTemplates;
   }
+
+  @override
+  Future<List<Note>> searchNotes(String query) async {
+    // In FileNoteRepository, we don't maintain a cache, 
+    // so global search is not efficient here.
+    return [];
+  }
 }

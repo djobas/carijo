@@ -45,4 +45,14 @@ class IsarDatabase {
       await _isar.notes.clear();
     });
   }
+
+  Future<List<Note>> searchNotes(String query) async {
+    if (query.isEmpty) return [];
+    return await _isar.notes
+        .filter()
+        .titleContains(query, caseSensitive: false)
+        .or()
+        .contentContains(query, caseSensitive: false)
+        .findAll();
+  }
 }

@@ -1,12 +1,60 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:flutter_math_fork/flutter_math.dart';
+import 'package:markdown/markdown.dart' as md;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../services/note_service.dart';
 import '../../services/theme_service.dart';
 import '../../domain/models/note.dart';
 import 'backlinks_sidebar.dart';
+
+// --- Markdown Extensions for Tech Editor ---
+
+class LatexSyntax extends md.InlineSyntax {
+  LatexSyntax() : super(r'\$([^\$]+)\$');
+
+  @override
+  bool onMatch(md.InlineParser parser, Match match) {
+    parser.addNode(md.Element.text('latex', match[1]!));
+    return true;
+  }
+}
+
+class LatexBlockSyntax extends md.BlockSyntax {
+  @override
+  RegExp get pattern => RegExp(r'^\$\$(.*)\$\$$', multiLine: true);
+
+  LatexBlockSyntax() : super();
+
+  @override
+  md.Node parse(md.BlockParser parser) {
+    final match = pattern.firstMatch(parser.current)!;
+    final content = match.group(1) ?? "";
+    parser.advance();
+    return md.Element.text('latex-block', content);
+  }
+}
+
+class MathBuilder extends MarkdownElementBuilder {
+  final bool isBlock;
+  MathBuilder({this.isBlock = false});
+
+  @override
+  Widget visitElementAfter(md.Element element, TextStyle? preferredStyle) {
+    final text = element.textContent;
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: isBlock ? 16 : 0),
+      child: Math.tex(
+        text,
+        mathStyle: isBlock ? MathStyle.display : MathStyle.text,
+        textStyle: preferredStyle?.copyWith(fontSize: isBlock ? 18 : null),
+        onErrorFallback: (err) => Text(text, style: const TextStyle(color: Colors.red)),
+      ),
+    );
+  }
+}
 
 class NoteEditor extends StatefulWidget {
   final TextEditingController editorController;
@@ -174,6 +222,14 @@ class _NoteEditorState extends State<NoteEditor> {
             data: widget.editorController.text,
             imageDirectory: noteService.notesPath,
             selectable: true,
+            extensionSet: md.ExtensionSet(
+              [const md.FencedCodeBlockSyntax(), LatexBlockSyntax(), const md.TableSyntax()],
+              [md.EmojiSyntax(), LatexSyntax(), md.AutolinkExtensionSyntax()],
+            ),
+            builders: {
+              'latex': MathBuilder(isBlock: false),
+              'latex-block': MathBuilder(isBlock: true),
+            },
             onTapLink: (text, href, title) {
               if (href != null) {
                 widget.onNavigateToNote(href);

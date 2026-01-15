@@ -7,7 +7,10 @@ part 'note.g.dart';
 class Note {
   Id get id => fastHash(path);
 
+  @Index(type: IndexType.value, caseSensitive: false)
   final String title;
+
+  @Index(type: IndexType.value, caseSensitive: false)
   final String content;
   
   @Index(unique: true, replace: true)

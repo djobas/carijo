@@ -7,4 +7,5 @@ abstract class NoteRepository {
   Future<void> deleteNote(String path);
   Future<String?> uploadImage(String notesPath, File imageFile);
   Future<List<Note>> getTemplates(String notesPath);
+  Future<List<Note>> searchNotes(String query);
 }

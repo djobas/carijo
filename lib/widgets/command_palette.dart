@@ -39,7 +39,7 @@ class _CommandPaletteState extends State<CommandPalette> {
     });
   }
 
-  void _loadActions(String query) {
+  Future<void> _loadActions(String query) async {
     final noteService = Provider.of<NoteService>(context, listen: false);
 
     if (widget.actions != null) {
@@ -70,11 +70,23 @@ class _CommandPaletteState extends State<CommandPalette> {
         .where((e) => e.value > 0)
         .toList();
 
-    // Notes already come sorted by fuzzyScore from noteService.searchNotes
-    final matchingNotes = noteService.searchNotes(query);
+    // Notes: First search titles (Fast), then search global (Deep)
+    final quickNotes = noteService.searchNotes(query);
+    final globalNotes = query.length > 2 ? await noteService.searchGlobal(query) : [];
+    
+    // Merge and deduplicate
+    final Set<String> seenPaths = {};
+    final List<Note> mergedNotes = [];
+    for (var n in [...quickNotes, ...globalNotes]) {
+      if (!seenPaths.contains(n.path)) {
+        mergedNotes.add(n);
+        seenPaths.add(n.path);
+      }
+    }
+
     final List<CommandAction> items = scoredStatic.map((e) => e.key).toList();
     
-    for (var note in matchingNotes) {
+    for (var note in mergedNotes) {
       items.add(CommandAction(
         label: "Open: ${note.title}", 
         icon: Icons.description, 
@@ -82,6 +94,7 @@ class _CommandPaletteState extends State<CommandPalette> {
       ));
     }
 
+    if (!mounted) return;
     setState(() {
       _filteredActions = items;
       _selectedIndex = 0;
