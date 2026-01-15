@@ -163,7 +163,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         onHeading: () => _toggleLinePrefix("# "),
                         onTable: _insertTable,
                         onLink: () => _wrapSelection("[[", "]]"),
-                        onMermaid: _insertMermaid,
                       ),
                     
                     // Editor & Backlinks
@@ -357,18 +356,6 @@ class _HomeScreenState extends State<HomeScreen> {
         : text.replaceRange(selection.start, selection.end, tableTemplate);
     _editorController.text = newText;
     _editorController.selection = TextSelection.collapsed(offset: selection.start + tableTemplate.length);
-  }
-
-  void _insertMermaid() {
-    const mermaidTemplate = "\n```mermaid\ngraph TD;\n    A-->B;\n    A-->C;\n    B-->D;\n    C-->D;\n```\n";
-    final text = _editorController.text;
-    final selection = _editorController.selection;
-    final newText = selection.start == -1 
-        ? "$text$mermaidTemplate" 
-        : text.replaceRange(selection.start, selection.end, mermaidTemplate);
-    _editorController.text = newText;
-    final cursorPos = selection.start == -1 ? newText.length : selection.start + mermaidTemplate.length;
-    _editorController.selection = TextSelection.collapsed(offset: cursorPos.clamp(0, newText.length));
   }
 
   void _wrapSelection(String prefix, [String? suffix]) {

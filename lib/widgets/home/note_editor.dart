@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_math_fork/flutter_math.dart';
-import 'package:webview_windows/webview_windows.dart';
 import 'package:markdown/markdown.dart' as md;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -13,150 +12,6 @@ import 'backlinks_sidebar.dart';
 
 // --- Markdown Extensions for Tech Editor ---
 
-class MermaidBlockSyntax extends md.BlockSyntax {
-  @override
-  RegExp get pattern => RegExp(r'^```mermaid\s*$');
-
-  const MermaidBlockSyntax();
-
-  @override
-  md.Node parse(md.BlockParser parser) {
-    final childLines = <String>[];
-    parser.advance();
-    
-    while (!parser.isDone) {
-      final line = parser.current.content;
-      if (line.trim() == '```') {
-        parser.advance();
-        break;
-      }
-      childLines.add(line);
-      parser.advance();
-    }
-    
-    return md.Element.text('mermaid', childLines.join('\n'));
-  }
-}
-
-class MermaidBuilder extends MarkdownElementBuilder {
-  @override
-  Widget visitElementAfter(md.Element element, TextStyle? preferredStyle) {
-    return MermaidWidget(content: element.textContent.trim());
-  }
-}
-
-class MermaidWidget extends StatefulWidget {
-  final String content;
-  const MermaidWidget({super.key, required this.content});
-
-  @override
-  State<MermaidWidget> createState() => _MermaidWidgetState();
-}
-
-class _MermaidWidgetState extends State<MermaidWidget> {
-  WebviewController? _controller;
-  bool _initialized = false;
-  String? _initializedContent;
-
-  @override
-  void initState() {
-    super.initState();
-    _initWebview();
-  }
-
-  @override
-  void didUpdateWidget(MermaidWidget oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.content != widget.content) {
-      _initWebview();
-    }
-  }
-
-  Future<void> _initWebview() async {
-    final currentContent = widget.content;
-    if (_initialized && _initializedContent == currentContent) return;
-
-    try {
-      final controller = _controller ?? WebviewController();
-      if (!_initialized) {
-        await controller.initialize();
-      }
-      
-      if (!mounted) {
-        controller.dispose();
-        return;
-      }
-      
-      await controller.setBackgroundColor(Colors.transparent);
-      
-      final html = """
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
-          <style>
-            body { background: transparent; margin: 0; padding: 10px; color: white; overflow: hidden; font-family: sans-serif; }
-            #graph { width: 100%; display: flex; justify-content: center; }
-          </style>
-        </head>
-        <body>
-          <div id="graph" class="mermaid">
-            ${currentContent.replaceAll('`', '\\`')}
-          </div>
-          <script>
-            try {
-              mermaid.initialize({ 
-                startOnLoad: true, 
-                theme: 'dark', 
-                securityLevel: 'loose'
-              });
-              mermaid.run();
-            } catch (e) {
-              document.body.innerHTML = '<pre style="color:red">' + e.message + '</pre>';
-            }
-          </script>
-        </body>
-        </html>
-      """;
-      
-      await controller.loadStringContent(html);
-      if (mounted) {
-        setState(() {
-          _controller = controller;
-          _initialized = true;
-          _initializedContent = currentContent;
-        });
-      }
-    } catch (e) {
-      debugPrint("Mermaid Init Error: $e");
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller?.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final ctrl = _controller;
-    return Container(
-      key: ValueKey(_initializedContent),
-      height: 350,
-      width: double.infinity,
-      margin: const EdgeInsets.symmetric(vertical: 24),
-      decoration: BoxDecoration(
-        color: const Color(0xFF0C0C0C),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white10),
-      ),
-      child: (_initialized && ctrl != null)
-          ? Webview(ctrl)
-          : const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-    );
-  }
-}
 
 class LatexSyntax extends md.InlineSyntax {
   LatexSyntax() : super(r'\$([^\$]+)\$');
@@ -390,14 +245,13 @@ class _NoteEditorState extends State<NoteEditor> {
             imageDirectory: noteService.notesPath,
             selectable: true,
             extensionSet: md.ExtensionSet(
-              [const MermaidBlockSyntax(), const md.FencedCodeBlockSyntax(), LatexBlockSyntax(), const md.TableSyntax()],
+              [const md.FencedCodeBlockSyntax(), LatexBlockSyntax(), const md.TableSyntax()],
               [md.EmojiSyntax(), LatexSyntax(), md.AutolinkExtensionSyntax()],
             ),
             key: ValueKey(noteService.selectedNote?.path ?? 'preview'),
             builders: {
               'latex': MathBuilder(isBlock: false),
               'latex-block': MathBuilder(isBlock: true),
-              'mermaid': MermaidBuilder(),
             },
             onTapLink: (text, href, title) {
               if (href != null) {

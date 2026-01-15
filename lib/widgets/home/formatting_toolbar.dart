@@ -11,7 +11,6 @@ class FormattingToolbar extends StatelessWidget {
   final VoidCallback onHeading;
   final VoidCallback onTable;
   final VoidCallback onLink;
-  final VoidCallback onMermaid;
 
   const FormattingToolbar({
     super.key,
@@ -23,7 +22,6 @@ class FormattingToolbar extends StatelessWidget {
     required this.onHeading,
     required this.onTable,
     required this.onLink,
-    required this.onMermaid,
   });
 
   @override
@@ -51,7 +49,6 @@ class FormattingToolbar extends StatelessWidget {
           VerticalDivider(color: borderColor, indent: 10, endIndent: 10),
           _buildToolbarBtn(Icons.table_chart_outlined, textMuted, onTable, "Insert Table"),
           _buildToolbarBtn(Icons.link, textMuted, onLink, "WikiLink"),
-          _buildToolbarBtn(Icons.hub_outlined, textMuted, onMermaid, "Insert Diagram (Mermaid)"),
         ],
       ),
     );
