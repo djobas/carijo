@@ -18,6 +18,7 @@ class SaveNoteUseCase {
       content: newContent,
       path: note.path,
       modified: DateTime.now(),
+      defaultTitle: note.title,
     );
   }
 }

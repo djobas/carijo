@@ -56,9 +56,10 @@ class Note {
     required String path,
     required DateTime modified,
     String? filename,
+    String? defaultTitle,
   }) {
     String effectiveFilename = filename ?? path.split(RegExp(r'[/\\]')).last;
-    String title = effectiveFilename;
+    String title = defaultTitle ?? effectiveFilename;
     Map<String, dynamic> metadata = {};
     Set<String> tags = {};
 
@@ -90,7 +91,7 @@ class Note {
     }
 
     // 2. Try H1 for Title (if no Title in Frontmatter)
-    if (title == effectiveFilename) {
+    if (title == effectiveFilename || title == defaultTitle) {
       final RegExp h1Regex = RegExp(r'^#\s+(.*)$', multiLine: true);
       final h1Match = h1Regex.firstMatch(content);
       if (h1Match != null) {
