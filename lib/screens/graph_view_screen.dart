@@ -1,7 +1,9 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../services/note_service.dart';
+import 'package:provider/provider.dart';
+import '../services/theme_service.dart';
 import '../domain/models/note.dart';
 
 class GraphViewScreen extends StatefulWidget {
@@ -13,112 +15,261 @@ class GraphViewScreen extends StatefulWidget {
   State<GraphViewScreen> createState() => _GraphViewScreenState();
 }
 
-class _GraphViewScreenState extends State<GraphViewScreen> {
-  final Map<String, Offset> _positions = {};
+class _GraphViewScreenState extends State<GraphViewScreen> with SingleTickerProviderStateMixin {
+  late Ticker _ticker;
+  final List<NodeData> _nodes = [];
   final Random _random = Random();
+  
+  NodeData? _draggedNode;
+  Offset? _hoverPos;
 
   @override
   void initState() {
     super.initState();
-    _initializePositions();
+    _initializeGraph();
+    _ticker = createTicker(_onTick)..start();
   }
 
-  void _initializePositions() {
+  void _initializeGraph() {
+    // 1. Create Nodes
     for (var note in widget.notes) {
-      _positions[note.title] = Offset(
-        _random.nextDouble() * 1200 + 400,
-        _random.nextDouble() * 800 + 400,
-      );
+      // Calculate link density for node size
+      int connections = note.outgoingLinks.length + 
+          widget.notes.where((n) => n.outgoingLinks.contains(note.title)).length;
+      
+      _nodes.add(NodeData(
+        note: note,
+        position: Offset(_random.nextDouble() * 800 + 400, _random.nextDouble() * 600 + 400),
+        mass: 1.0 + (connections * 0.2),
+        radius: 6.0 + (connections * 1.5).clamp(0, 20),
+      ));
     }
+
+    // 2. Link Nodes
+    for (var node in _nodes) {
+      for (var linkTitle in node.note.outgoingLinks) {
+        final target = _nodes.where((n) => n.note.title == linkTitle).firstOrNull;
+        if (target != null) {
+          node.links.add(target);
+        }
+      }
+    }
+  }
+
+  void _onTick(Duration elapsed) {
+    if (!mounted) return;
+
+    const double k = 120.0; // Ideal distance
+    const double repulsionStrength = 8000.0;
+    const double springStrength = 0.05;
+    const double damping = 0.85;
+
+    // 1. Repulsion (All nodes push each other)
+    for (var i = 0; i < _nodes.length; i++) {
+      for (var j = i + 1; j < _nodes.length; j++) {
+        final nodeA = _nodes[i];
+        final nodeB = _nodes[j];
+        
+        final delta = nodeB.position - nodeA.position;
+        final distance = delta.distance;
+        if (distance < 1.0) continue;
+
+        final force = (repulsionStrength * nodeA.mass * nodeB.mass) / (distance * distance);
+        final forceVector = delta / distance * force;
+
+        if (nodeA != _draggedNode) nodeA.velocity -= forceVector / nodeA.mass;
+        if (nodeB != _draggedNode) nodeB.velocity += forceVector / nodeB.mass;
+      }
+    }
+
+    // 2. Attraction (Linked nodes pull each other)
+    for (var node in _nodes) {
+      for (var linked in node.links) {
+        final delta = linked.position - node.position;
+        final distance = delta.distance;
+        if (distance < 1.0) continue;
+
+        final force = springStrength * (distance - k);
+        final forceVector = delta / distance * force;
+
+        if (node != _draggedNode) node.velocity += forceVector / node.mass;
+        if (linked != _draggedNode) linked.velocity -= forceVector / linked.mass;
+      }
+    }
+
+    // 3. Center Gravity (Keep it focused)
+    final center = const Offset(1000, 1000);
+    for (var node in _nodes) {
+      final delta = center - node.position;
+      if (node != _draggedNode) {
+        node.velocity += delta * 0.005;
+      }
+    }
+
+    // 4. Apply Velocity & Damping
+    setState(() {
+      for (var node in _nodes) {
+        if (node == _draggedNode) continue;
+        node.position += node.velocity;
+        node.velocity *= damping;
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _ticker.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    const bgMain = Color(0xFF0F0F0F);
-    const accent = Color(0xFFD93025);
-    const textMain = Color(0xFFF4F1EA);
+    final theme = Provider.of<ThemeService>(context).theme;
 
     return Scaffold(
-      backgroundColor: bgMain,
+      backgroundColor: theme.bgMain,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: Text("O Ninho: Network Graph", style: GoogleFonts.spaceGrotesk(color: textMain, fontWeight: FontWeight.bold)),
+        title: Text("O Ninho (Graph V2)", style: GoogleFonts.spaceGrotesk(color: theme.textMain, fontWeight: FontWeight.bold)),
         leading: IconButton(
-          icon: const Icon(Icons.close, color: textMain),
+          icon: Icon(Icons.close, color: theme.textMain),
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: InteractiveViewer(
-        boundaryMargin: const EdgeInsets.all(2000),
-        minScale: 0.1,
-        maxScale: 2.0,
-        child: SizedBox(
-          width: 2000,
-          height: 2000,
-          child: CustomPaint(
-            painter: GraphPainter(
-              notes: widget.notes,
-              positions: _positions,
-              accent: accent,
-              textStyle: GoogleFonts.jetBrainsMono(color: textMain.withOpacity(0.5), fontSize: 10),
+      body: GestureDetector(
+        onPanStart: (details) {
+          final renderBox = context.findRenderObject() as RenderBox;
+          final localPos = _getLocalPosition(details.globalPosition, context);
+          
+          for (var node in _nodes) {
+            if ((node.position - localPos).distance < node.radius + 10) {
+              setState(() => _draggedNode = node);
+              break;
+            }
+          }
+        },
+        onPanUpdate: (details) {
+          if (_draggedNode != null) {
+            setState(() {
+              _draggedNode!.position = _getLocalPosition(details.globalPosition, context);
+              _draggedNode!.velocity = Offset.zero;
+            });
+          }
+        },
+        onPanEnd: (_) => setState(() => _draggedNode = null),
+        onTapUp: (details) {
+          final localPos = _getLocalPosition(details.globalPosition, context);
+          for (var node in _nodes) {
+            if ((node.position - localPos).distance < node.radius + 5) {
+              Navigator.pop(context, node.note);
+              break;
+            }
+          }
+        },
+        child: MouseRegion(
+          onHover: (event) => setState(() => _hoverPos = _getLocalPosition(event.position, context)),
+          child: InteractiveViewer(
+            boundaryMargin: const EdgeInsets.all(2000),
+            minScale: 0.1,
+            maxScale: 2.0,
+            child: SizedBox(
+              width: 2000,
+              height: 2000,
+              child: CustomPaint(
+                painter: GraphPainter(
+                  nodes: _nodes,
+                  theme: theme,
+                  hoverPos: _hoverPos,
+                ),
+              ),
             ),
           ),
         ),
       ),
     );
   }
+
+  Offset _getLocalPosition(Offset globalPos, BuildContext context) {
+    // This is approximate due to InteractiveViewer's transformations, 
+    // but works for basic physics and interaction.
+    // Ideally we'd use the Viewer's transformation controller.
+    final renderBox = context.findRenderObject() as RenderBox;
+    return renderBox.globalToLocal(globalPos) + const Offset(1000, 1000) - Offset(renderBox.size.width/2, renderBox.size.height/2);
+  }
+}
+
+class NodeData {
+  final Note note;
+  Offset position;
+  Offset velocity = Offset.zero;
+  final double mass;
+  final double radius;
+  final List<NodeData> links = [];
+
+  NodeData({
+    required this.note,
+    required this.position,
+    required this.mass,
+    required this.radius,
+  });
 }
 
 class GraphPainter extends CustomPainter {
-  final List<Note> notes;
-  final Map<String, Offset> positions;
-  final Color accent;
-  final TextStyle textStyle;
+  final List<NodeData> nodes;
+  final dynamic theme;
+  final Offset? hoverPos;
 
   GraphPainter({
-    required this.notes,
-    required this.positions,
-    required this.accent,
-    required this.textStyle,
+    required this.nodes,
+    required this.theme,
+    this.hoverPos,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    final linePaint = Paint()
-      ..color = Colors.white.withOpacity(0.1)
-      ..strokeWidth = 1;
+    final edgePaint = Paint()
+      ..color = theme.borderColor.withOpacity(0.2)
+      ..strokeWidth = 1.0;
     
     final nodePaint = Paint()
-      ..color = accent
+      ..color = theme.accent
       ..style = PaintingStyle.fill;
 
     // 1. Draw Edges
-    for (var note in notes) {
-      final startPos = positions[note.title];
-      if (startPos == null) continue;
-
-      for (var link in note.outgoingLinks) {
-        final endPos = positions[link];
-        if (endPos != null) {
-          canvas.drawLine(startPos, endPos, linePaint);
-        }
+    for (var node in nodes) {
+      for (var linked in node.links) {
+        canvas.drawLine(node.position, linked.position, edgePaint);
       }
     }
 
     // 2. Draw Nodes
-    for (var note in notes) {
-      final pos = positions[note.title];
-      if (pos == null) continue;
-
-      canvas.drawCircle(pos, 4, nodePaint);
-
-      final textPainter = TextPainter(
-        text: TextSpan(text: note.title, style: textStyle),
-        textDirection: TextDirection.ltr,
-      )..layout();
+    for (var node in nodes) {
+      final isHovered = hoverPos != null && (node.position - hoverPos!).distance < node.radius + 5;
       
-      textPainter.paint(canvas, Offset(pos.dx + 8, pos.dy - 6));
+      // Node Circle
+      canvas.drawCircle(
+        node.position, 
+        node.radius * (isHovered ? 1.2 : 1.0), 
+        nodePaint..color = isHovered ? theme.accent : theme.accent.withOpacity(0.8)
+      );
+
+      // Label (only if important or hovered)
+      if (node.mass > 1.2 || isHovered) {
+        final textPainter = TextPainter(
+          text: TextSpan(
+            text: node.note.title, 
+            style: GoogleFonts.inter(
+              color: isHovered ? theme.textMain : theme.textMuted, 
+              fontSize: 12 * (isHovered ? 1.2 : 1.0),
+              fontWeight: isHovered ? FontWeight.bold : FontWeight.normal,
+            )
+          ),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        
+        textPainter.paint(canvas, Offset(node.position.dx + node.radius + 4, node.position.dy - textPainter.height / 2));
+      }
     }
   }
 

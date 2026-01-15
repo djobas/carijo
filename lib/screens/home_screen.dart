@@ -387,7 +387,12 @@ class _HomeScreenState extends State<HomeScreen> {
           CommandAction(label: "Daily Note", icon: Icons.calendar_today, onAction: () => noteService.openDailyNote()),
           CommandAction(label: "Toggle Preview", icon: Icons.auto_stories, onAction: () => setState(() => _isEditing = !_isEditing)),
           CommandAction(label: "Insert Image", icon: Icons.image, onAction: () => _pickAndInsertImage(noteService)),
-          CommandAction(label: "Graph View", icon: Icons.hub, onAction: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GraphViewScreen(notes: noteService.notes)))),
+          CommandAction(label: "Graph View", icon: Icons.hub, onAction: () async {
+            final Note? selected = await Navigator.push<Note>(context, MaterialPageRoute(builder: (_) => GraphViewScreen(notes: noteService.notes)));
+            if (selected != null) {
+              _navigateToNote(selected.title);
+            }
+          }),
           CommandAction(label: "Deploy / Sync", icon: Icons.cloud_upload, onAction: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DeployScreen()))),
           CommandAction(label: "Settings", icon: Icons.settings, onAction: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()))),
         ],
