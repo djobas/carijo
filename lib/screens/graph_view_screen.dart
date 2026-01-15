@@ -139,7 +139,6 @@ class _GraphViewScreenState extends State<GraphViewScreen> with SingleTickerProv
       ),
       body: GestureDetector(
         onPanStart: (details) {
-          final renderBox = context.findRenderObject() as RenderBox;
           final localPos = _getLocalPosition(details.globalPosition, context);
           
           for (var node in _nodes) {
@@ -230,7 +229,7 @@ class GraphPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final edgePaint = Paint()
-      ..color = theme.borderColor.withOpacity(0.2)
+      ..color = theme.borderColor.withValues(alpha: 0.2)
       ..strokeWidth = 1.0;
     
     final nodePaint = Paint()
@@ -253,7 +252,7 @@ class GraphPainter extends CustomPainter {
       canvas.drawCircle(
         node.position, 
         node.radius * (isHovered ? 1.2 : 1.0), 
-        nodePaint..color = isHovered ? theme.accent : theme.accent.withOpacity(0.8)
+        nodePaint..color = isHovered ? theme.accent : theme.accent.withValues(alpha: 0.8)
       );
 
       // Label (only if important or hovered)

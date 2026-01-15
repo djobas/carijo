@@ -1,66 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
-import 'package:flutter_math_fork/flutter_math.dart';
 import 'package:markdown/markdown.dart' as md;
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../services/note_service.dart';
 import '../../services/theme_service.dart';
-import '../../domain/models/note.dart';
 import 'backlinks_sidebar.dart';
+import 'markdown_extensions.dart';
 
-// --- Markdown Extensions for Tech Editor ---
-
-
-class LatexSyntax extends md.InlineSyntax {
-  LatexSyntax() : super(r'\$([^\$]+)\$');
-
-  @override
-  bool onMatch(md.InlineParser parser, Match match) {
-    final content = match.group(1);
-    if (content != null) {
-      parser.addNode(md.Element.text('latex', content));
-    }
-    return true;
-  }
-}
-
-class LatexBlockSyntax extends md.BlockSyntax {
-  @override
-  RegExp get pattern => RegExp(r'^\$\$(.*)\$\$$', multiLine: true);
-
-  LatexBlockSyntax() : super();
-
-  @override
-  md.Node parse(md.BlockParser parser) {
-    if (parser.isDone) return md.Text("");
-    final line = parser.current.content;
-    final match = pattern.firstMatch(line);
-    final content = match != null ? (match.group(1) ?? "") : "";
-    parser.advance();
-    return md.Element.text('latex-block', content);
-  }
-}
-
-class MathBuilder extends MarkdownElementBuilder {
-  final bool isBlock;
-  MathBuilder({this.isBlock = false});
-
-  @override
-  Widget visitElementAfter(md.Element element, TextStyle? preferredStyle) {
-    final text = element.textContent;
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: isBlock ? 16 : 0),
-      child: Math.tex(
-        text,
-        mathStyle: isBlock ? MathStyle.display : MathStyle.text,
-        textStyle: preferredStyle?.copyWith(fontSize: isBlock ? 18 : null),
-        onErrorFallback: (err) => Text(text, style: const TextStyle(color: Colors.red)),
-      ),
-    );
-  }
-}
+// --- Note Editor Implementation ---
 
 class NoteEditor extends StatefulWidget {
   final TextEditingController editorController;
@@ -124,7 +73,7 @@ class _NoteEditorState extends State<NoteEditor> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.edit_note, size: 64, color: theme.textMuted.withOpacity(0.2)),
+            Icon(Icons.edit_note, size: 64, color: theme.textMuted.withValues(alpha: 0.2)),
             const SizedBox(height: 16),
             Text("Select a note to start writing", 
               style: GoogleFonts.spaceGrotesk(color: theme.textMuted, fontSize: 16)
@@ -262,14 +211,14 @@ class _NoteEditorState extends State<NoteEditor> {
             },
             styleSheet: MarkdownStyleSheet(
               // Typography
-              p: GoogleFonts.inter(color: theme.textMain.withOpacity(0.9), fontSize: 17, height: 1.7),
+              p: GoogleFonts.inter(color: theme.textMain.withValues(alpha: 0.9), fontSize: 17, height: 1.7),
               h1: GoogleFonts.spaceGrotesk(color: theme.textMain, fontSize: 36, fontWeight: FontWeight.bold, height: 1.4),
               h2: GoogleFonts.spaceGrotesk(color: theme.textMain, fontSize: 28, fontWeight: FontWeight.bold, height: 1.4),
               h3: GoogleFonts.spaceGrotesk(color: theme.textMain, fontSize: 22, fontWeight: FontWeight.bold),
               
               // Code
               code: GoogleFonts.jetBrainsMono(
-                backgroundColor: theme.accent.withOpacity(0.08), 
+                backgroundColor: theme.accent.withValues(alpha: 0.08), 
                 color: theme.accent,
                 fontSize: 14,
               ),
@@ -327,7 +276,7 @@ class _NoteEditorState extends State<NoteEditor> {
           color: theme.bgSidebar,
           border: Border.all(color: theme.borderColor),
           borderRadius: BorderRadius.circular(8),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 16, offset: const Offset(0, 8))]
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 16, offset: const Offset(0, 8))]
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,

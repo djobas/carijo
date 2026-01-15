@@ -21,7 +21,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-    final prefs = SharedPreferences.getInstance();
     
     final noteService = Provider.of<NoteService>(context, listen: false);
     _pathController.text = noteService.notesPath ?? '';
@@ -82,7 +81,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const SizedBox(height: 20),
                 
                 Text("UI Theme", 
-                  style: GoogleFonts.spaceGrotesk(color: textMain.withOpacity(0.8), fontSize: 14)
+                  style: GoogleFonts.spaceGrotesk(color: textMain.withValues(alpha: 0.8), fontSize: 14)
                 ),
                 DropdownButton<AppTheme>(
                   value: themeService.theme,
@@ -101,7 +100,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const SizedBox(height: 32),
 
                 Text("Local Folder Path", 
-                  style: GoogleFonts.spaceGrotesk(color: textMain.withOpacity(0.8), fontSize: 14)
+                  style: GoogleFonts.spaceGrotesk(color: textMain.withValues(alpha: 0.8), fontSize: 14)
                 ),
                 TextField(
                   controller: _pathController,
@@ -110,7 +109,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: borderGray)),
                     focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: accent)),
                     hintText: "/home/user/notes",
-                    hintStyle: TextStyle(color: textMain.withOpacity(0.3)),
+                    hintStyle: TextStyle(color: textMain.withValues(alpha: 0.3)),
                   ),
                 ),
                 const SizedBox(height: 40),
@@ -126,7 +125,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const SizedBox(height: 20),
 
                 Text("Supabase Project URL", 
-                  style: GoogleFonts.spaceGrotesk(color: textMain.withOpacity(0.8), fontSize: 14)
+                  style: GoogleFonts.spaceGrotesk(color: textMain.withValues(alpha: 0.8), fontSize: 14)
                 ),
                 TextField(
                   controller: _supabaseUrlController,
@@ -135,13 +134,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: borderGray)),
                     focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: accent)),
                     hintText: "https://xyz.supabase.co",
-                    hintStyle: TextStyle(color: textMain.withOpacity(0.3)),
+                    hintStyle: TextStyle(color: textMain.withValues(alpha: 0.3)),
                   ),
                 ),
                 const SizedBox(height: 20),
 
                 Text("Anon Public Key", 
-                  style: GoogleFonts.spaceGrotesk(color: textMain.withOpacity(0.8), fontSize: 14)
+                  style: GoogleFonts.spaceGrotesk(color: textMain.withValues(alpha: 0.8), fontSize: 14)
                 ),
                 TextField(
                   controller: _supabaseKeyController,
@@ -151,7 +150,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: borderGray)),
                     focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: accent)),
                     hintText: "eyJhbGci...",
-                    hintStyle: TextStyle(color: textMain.withOpacity(0.3)),
+                    hintStyle: TextStyle(color: textMain.withValues(alpha: 0.3)),
                   ),
                 ),
                 
@@ -163,14 +162,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     onPressed: () async {
                       final noteService = Provider.of<NoteService>(context, listen: false);
                       final supabaseService = Provider.of<SupabaseService>(context, listen: false);
+                      final messenger = ScaffoldMessenger.of(context);
+                      final navigator = Navigator.of(context);
                       
                       noteService.setNotesPath(_pathController.text);
                       await supabaseService.saveConfig(_supabaseUrlController.text, _supabaseKeyController.text);
 
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      messenger.showSnackBar(
                         const SnackBar(content: Text("Configuration Saved"))
                       );
-                      Navigator.pop(context);
+                      navigator.pop();
                     },
                     icon: const Icon(Icons.save),
                     label: Text("Save Configuration", style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.bold)),

@@ -162,8 +162,8 @@ class _DeployScreenState extends State<DeployScreen> {
                       padding: const EdgeInsets.all(24),
                       margin: const EdgeInsets.all(32),
                       decoration: BoxDecoration(
-                        color: accent.withOpacity(0.1),
-                        border: Border.all(color: accent.withOpacity(0.3)),
+                        color: accent.withValues(alpha: 0.1),
+                        border: Border.all(color: accent.withValues(alpha: 0.3)),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: SelectableText(gitService.lastError ?? "Unknown Error", style: GoogleFonts.jetBrainsMono(color: accent, fontSize: 12)),
@@ -229,7 +229,7 @@ class _DeployScreenState extends State<DeployScreen> {
                           color: surface,
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: borderColor),
-                          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 10)],
+                          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 10)],
                         ),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
@@ -289,7 +289,7 @@ class _DeployScreenState extends State<DeployScreen> {
                           color: surface,
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: borderColor),
-                          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 10)],
+                          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 10)],
                         ),
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
@@ -313,13 +313,14 @@ class _DeployScreenState extends State<DeployScreen> {
                               onPressed: (supabaseService.isSyncing || !supabaseService.isInitialized) 
                                 ? null 
                                 : () async {
+                                    final messenger = ScaffoldMessenger.of(context);
                                     try {
                                       await supabaseService.syncAll(noteService.notes);
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      messenger.showSnackBar(
                                         const SnackBar(content: Text("Blog Sync Successful"))
                                       );
                                     } catch (e) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
+                                      messenger.showSnackBar(
                                         SnackBar(content: Text("Sync Error: $e"), backgroundColor: accent)
                                       );
                                     }
@@ -358,7 +359,7 @@ class _DeployScreenState extends State<DeployScreen> {
           Text(title, style: GoogleFonts.spaceGrotesk(fontWeight: FontWeight.bold, color: color, fontSize: 12)),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(4)),
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(4)),
             child: Text("$count FILES", style: GoogleFonts.jetBrainsMono(color: color, fontSize: 10)),
           )
         ],
@@ -382,7 +383,7 @@ class _DeployScreenState extends State<DeployScreen> {
         decoration: BoxDecoration(
           color: isSelected ? surface : Colors.transparent,
           borderRadius: BorderRadius.circular(4),
-          border: Border.all(color: isSelected ? accent.withOpacity(0.3) : Colors.transparent),
+          border: Border.all(color: isSelected ? accent.withValues(alpha: 0.3) : Colors.transparent),
         ),
         child: Row(
           children: [

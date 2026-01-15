@@ -17,6 +17,7 @@ dependencies:
   shared_preferences: ^2.2.2
   # Markdown Rendering
   flutter_markdown: ^0.6.18
+  markdown: ^7.1.1
   # Yaml for frontmatter
   yaml: ^3.1.2
   # Date formatting for Quick Capture

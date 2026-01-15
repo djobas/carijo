@@ -122,17 +122,17 @@ class _CommandPaletteState extends State<CommandPalette> {
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: borderColor),
             boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 20),
+              BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 20),
             ],
           ),
           child: Column(
             children: [
               Padding(
                 padding: const EdgeInsets.all(16),
-                child: RawKeyboardListener(
+                child: KeyboardListener(
                   focusNode: FocusNode(),
-                  onKey: (event) {
-                    if (event is RawKeyDownEvent) {
+                  onKeyEvent: (event) {
+                    if (event is KeyDownEvent) {
                       if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
                         setState(() {
                           _selectedIndex = (_selectedIndex + 1) % _filteredActions.length;
@@ -181,7 +181,7 @@ class _CommandPaletteState extends State<CommandPalette> {
                             },
                             child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                              color: isSelected ? accent.withOpacity(0.1) : null,
+                              color: isSelected ? accent.withValues(alpha: 0.1) : null,
                               child: Row(
                                 children: [
                                   Icon(action.icon, size: 18, color: isSelected ? accent : textMuted),
@@ -207,7 +207,7 @@ class _CommandPaletteState extends State<CommandPalette> {
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     Text("↑↓ to navigate, ENTER to select, ESC to dismiss", 
-                      style: GoogleFonts.jetBrainsMono(color: textMuted.withOpacity(0.5), fontSize: 10)),
+                      style: GoogleFonts.jetBrainsMono(color: textMuted.withValues(alpha: 0.5), fontSize: 10)),
                   ],
                 ),
               ),

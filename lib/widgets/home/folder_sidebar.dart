@@ -90,7 +90,7 @@ class _FolderSidebarState extends State<FolderSidebar> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               decoration: BoxDecoration(
-                color: bgSidebar.withOpacity(0.5),
+                color: bgSidebar.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: borderColor),
               ),
@@ -193,7 +193,7 @@ class _FolderSidebarState extends State<FolderSidebar> {
       child: Container(
         decoration: BoxDecoration(
           border: Border(left: BorderSide(color: isSelected ? accent : Colors.transparent, width: 2)),
-          color: isSelected ? accent.withOpacity(0.1) : null,
+          color: isSelected ? accent.withValues(alpha: 0.1) : null,
         ),
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -252,7 +252,7 @@ class _FolderSidebarState extends State<FolderSidebar> {
                 Icon(
                   isExpanded ? Icons.folder_open : Icons.folder,
                   size: 16,
-                  color: accent.withOpacity(0.7),
+                  color: accent.withValues(alpha: 0.7),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -289,7 +289,7 @@ class _FolderSidebarState extends State<FolderSidebar> {
       child: Container(
         decoration: BoxDecoration(
           border: Border(left: BorderSide(color: isSelected ? accent : Colors.transparent, width: 2)),
-          color: isSelected ? accent.withOpacity(0.1) : null,
+          color: isSelected ? accent.withValues(alpha: 0.1) : null,
         ),
         padding: EdgeInsets.fromLTRB(36.0 + (level * 12), 10, 16, 10),
         child: Row(

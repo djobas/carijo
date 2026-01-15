@@ -3,7 +3,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../services/note_service.dart';
 import '../../services/theme_service.dart';
-import '../../domain/models/note.dart';
 
 class PropertiesSidebar extends StatelessWidget {
   final TextEditingController titleController;
@@ -93,7 +92,7 @@ class PropertiesSidebar extends StatelessWidget {
                   decoration: InputDecoration(
                     isDense: true,
                     hintText: "tag1, tag2",
-                    hintStyle: TextStyle(color: textMuted.withOpacity(0.5)),
+                    hintStyle: TextStyle(color: textMuted.withValues(alpha: 0.5)),
                     contentPadding: const EdgeInsets.symmetric(vertical: 8),
                     enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: borderColor)),
                     focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: accent)),
@@ -108,7 +107,7 @@ class PropertiesSidebar extends StatelessWidget {
                   decoration: InputDecoration(
                     isDense: true,
                     hintText: "Ex: Blog, Projects",
-                    hintStyle: TextStyle(color: textMuted.withOpacity(0.5)),
+                    hintStyle: TextStyle(color: textMuted.withValues(alpha: 0.5)),
                     contentPadding: const EdgeInsets.symmetric(vertical: 8),
                     enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: borderColor)),
                     focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: accent)),
@@ -123,7 +122,7 @@ class PropertiesSidebar extends StatelessWidget {
                   decoration: InputDecoration(
                     isDense: true,
                     hintText: "seo-friendly-slug",
-                    hintStyle: TextStyle(color: textMuted.withOpacity(0.5)),
+                    hintStyle: TextStyle(color: textMuted.withValues(alpha: 0.5)),
                     contentPadding: const EdgeInsets.symmetric(vertical: 8),
                     enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: borderColor)),
                     focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: accent)),
@@ -137,8 +136,8 @@ class PropertiesSidebar extends StatelessWidget {
                     Switch(
                       value: isPublished,
                       onChanged: onPublishedChanged,
-                      activeColor: const Color(0xFF3ECF8E),
-                      activeTrackColor: const Color(0xFF3ECF8E).withOpacity(0.2),
+                      activeThumbColor: const Color(0xFF3ECF8E),
+                      activeTrackColor: const Color(0xFF3ECF8E).withValues(alpha: 0.2),
                     ),
                   ],
                 ),

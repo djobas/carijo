@@ -59,7 +59,7 @@ class FormattingToolbar extends StatelessWidget {
       icon: Icon(icon, color: color, size: 18),
       onPressed: onPressed,
       tooltip: tooltip,
-      hoverColor: color.withOpacity(0.1),
+      hoverColor: color.withValues(alpha: 0.1),
       constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
       padding: EdgeInsets.zero,
     );

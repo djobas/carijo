@@ -6,7 +6,6 @@ import 'package:file_picker/file_picker.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../services/note_service.dart';
-import '../services/git_service.dart';
 import '../services/theme_service.dart';
 import '../widgets/command_palette.dart';
 import '../widgets/home/folder_sidebar.dart';
@@ -35,7 +34,6 @@ class _HomeScreenState extends State<HomeScreen> {
   
   bool _isPublished = false;
   bool _isEditing = true;
-  String? _lastSelectedPath;
   bool _showProperties = false;
 
   // Autocomplete state
@@ -82,29 +80,6 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     } else if (_showAutocomplete) {
       setState(() => _showAutocomplete = false);
-    }
-  }
-
-  void _syncEditorWithSelection(NoteService noteService) {
-    final selectedNote = noteService.selectedNote;
-    if (selectedNote != null && selectedNote.path != _lastSelectedPath) {
-      _editorController.removeListener(_onEditorChanged);
-      _editorController.text = selectedNote.content;
-      _titleController.text = selectedNote.title;
-      _tagsController.text = selectedNote.tags.join(', ');
-      _isPublished = selectedNote.isPublished;
-      _categoryController.text = selectedNote.category ?? '';
-      _slugController.text = selectedNote.slug ?? '';
-      _lastSelectedPath = selectedNote.path;
-      _editorController.addListener(_onEditorChanged);
-    } else if (selectedNote == null) {
-      _lastSelectedPath = null;
-      _editorController.clear();
-      _titleController.clear();
-      _tagsController.clear();
-      _categoryController.clear();
-      _slugController.clear();
-      _isPublished = false;
     }
   }
 
@@ -246,8 +221,8 @@ class _HomeScreenState extends State<HomeScreen> {
           Switch(
             value: !_isEditing, 
             onChanged: (val) => setState(() => _isEditing = !val),
-            activeColor: theme.accent,
-            activeTrackColor: theme.accent.withOpacity(0.3),
+            activeThumbColor: theme.accent,
+            activeTrackColor: theme.accent.withValues(alpha: 0.3),
             inactiveThumbColor: theme.textMuted,
             inactiveTrackColor: theme.borderColor,
           )
@@ -384,7 +359,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void _showCommandPalette(BuildContext context, NoteService noteService) {
     showDialog(
       context: context,
-      barrierColor: Colors.black.withOpacity(0.5),
+      barrierColor: Colors.black.withValues(alpha: 0.5),
       builder: (context) => CommandPalette(
         actions: [
           CommandAction(label: "New Note", icon: Icons.add, onAction: () => _showNewNoteOptions(context, noteService)),

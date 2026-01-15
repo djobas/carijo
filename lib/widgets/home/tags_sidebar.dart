@@ -40,12 +40,12 @@ class TagsSidebar extends StatelessWidget {
                     margin: const EdgeInsets.only(right: 8),
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
-                      color: isFiltered ? accent.withOpacity(0.2) : theme.bgSidebar,
+                      color: isFiltered ? accent.withValues(alpha: 0.2) : theme.bgSidebar,
                       borderRadius: BorderRadius.circular(4),
                       border: isFiltered ? Border.all(color: accent) : Border.all(color: theme.borderColor),
                     ),
                     child: Text("#$tag", style: GoogleFonts.jetBrainsMono(
-                      color: isFiltered ? textMain : textMain.withOpacity(0.7), 
+                      color: isFiltered ? textMain : textMain.withValues(alpha: 0.7), 
                       fontSize: 10,
                       fontWeight: isFiltered ? FontWeight.bold : FontWeight.normal
                     )),

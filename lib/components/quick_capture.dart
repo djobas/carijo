@@ -4,7 +4,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import '../services/note_service.dart';
-import '../domain/models/note.dart';
 
 class QuickCaptureDialog extends StatefulWidget {
   const QuickCaptureDialog({super.key});
@@ -53,7 +52,7 @@ class _QuickCaptureDialogState extends State<QuickCaptureDialog> {
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: borderColor),
             boxShadow: [
-              BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 20)
+              BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 20)
             ],
           ),
           child: Column(
@@ -82,8 +81,8 @@ class _QuickCaptureDialogState extends State<QuickCaptureDialog> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: accent.withOpacity(0.1),
-                        border: Border.all(color: accent.withOpacity(0.2)),
+                        color: accent.withValues(alpha: 0.1),
+                        border: Border.all(color: accent.withValues(alpha: 0.2)),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
@@ -99,11 +98,11 @@ class _QuickCaptureDialogState extends State<QuickCaptureDialog> {
                 ),
               ),
               // Input
-              RawKeyboardListener(
+              KeyboardListener(
                 focusNode: FocusNode(), // Dummy node to capture keys
-                onKey: (event) {
-                  if (event is RawKeyDownEvent) {
-                    if (event.logicalKey == LogicalKeyboardKey.enter && !event.isShiftPressed) {
+                onKeyEvent: (event) {
+                  if (event is KeyDownEvent) {
+                    if (event.logicalKey == LogicalKeyboardKey.enter && !HardwareKeyboard.instance.isShiftPressed) {
                       _saveAndClose();
                     } else if (event.logicalKey == LogicalKeyboardKey.escape) {
                       Navigator.of(context).pop();
@@ -120,7 +119,7 @@ class _QuickCaptureDialogState extends State<QuickCaptureDialog> {
                   cursorColor: accent,
                   decoration: InputDecoration(
                     hintText: "Type your thought...",
-                    hintStyle: GoogleFonts.jetBrainsMono(color: textMuted.withOpacity(0.5)),
+                    hintStyle: GoogleFonts.jetBrainsMono(color: textMuted.withValues(alpha: 0.5)),
                     border: InputBorder.none,
                     contentPadding: const EdgeInsets.all(24),
                   ),

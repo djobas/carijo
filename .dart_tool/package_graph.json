@@ -16,6 +16,7 @@
         "intl",
         "isar",
         "isar_flutter_libs",
+        "markdown",
         "path",
         "path_provider",
         "provider",
@@ -210,6 +211,14 @@
         "collection",
         "source_span",
         "string_scanner"
+      ]
+    },
+    {
+      "name": "markdown",
+      "version": "7.3.0",
+      "dependencies": [
+        "args",
+        "meta"
       ]
     },
     {
@@ -844,14 +853,6 @@
         "collection",
         "path",
         "term_glyph"
-      ]
-    },
-    {
-      "name": "markdown",
-      "version": "7.3.0",
-      "dependencies": [
-        "args",
-        "meta"
       ]
     },
     {

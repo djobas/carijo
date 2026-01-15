@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import 'services/supabase_service.dart';
 import 'services/git_service.dart';
 import 'screens/home_screen.dart';
-import 'screens/settings_screen.dart';
 import 'components/quick_capture.dart';
 import 'widgets/command_palette.dart';
 import 'services/note_service.dart';
@@ -84,14 +83,14 @@ class CarijoApp extends StatelessWidget {
               showDialog(
                 context: context, 
                 builder: (_) => const CommandPalette(),
-                barrierColor: Colors.black.withOpacity(0.7),
+                barrierColor: Colors.black.withValues(alpha: 0.7),
               );
             },
             const SingleActivator(LogicalKeyboardKey.keyP, control: true, shift: true): () {
               showDialog(
                 context: context, 
                 builder: (_) => const CommandPalette(),
-                barrierColor: Colors.black.withOpacity(0.7),
+                barrierColor: Colors.black.withValues(alpha: 0.7),
               );
             },
             const SingleActivator(LogicalKeyboardKey.keyK, meta: true): () {
@@ -99,7 +98,7 @@ class CarijoApp extends StatelessWidget {
               showDialog(
                 context: context, 
                 builder: (_) => const CommandPalette(),
-                barrierColor: Colors.black.withOpacity(0.7),
+                barrierColor: Colors.black.withValues(alpha: 0.7),
               );
             },
             const SingleActivator(LogicalKeyboardKey.keyP, meta: true, shift: true): () {
@@ -107,7 +106,7 @@ class CarijoApp extends StatelessWidget {
               showDialog(
                 context: context, 
                 builder: (_) => const CommandPalette(),
-                barrierColor: Colors.black.withOpacity(0.7),
+                barrierColor: Colors.black.withValues(alpha: 0.7),
               );
             },
             // Quick Capture shortcut could be globally bound here too if window focus permits
