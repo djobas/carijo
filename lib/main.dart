@@ -58,6 +58,23 @@ void main() async {
   );
 }
 
+void _showAnimatedDialog(BuildContext context, Widget dialog) {
+  showGeneralDialog(
+    context: context,
+    barrierDismissible: true,
+    barrierLabel: "Dialog",
+    barrierColor: Colors.black.withValues(alpha: 0.7),
+    transitionDuration: const Duration(milliseconds: 200),
+    pageBuilder: (context, animation, secondaryAnimation) => dialog,
+    transitionBuilder: (context, animation, secondaryAnimation, child) {
+      return ScaleTransition(
+        scale: CurvedAnimation(parent: animation, curve: Curves.easeOutBack),
+        child: FadeTransition(opacity: animation, child: child),
+      );
+    },
+  );
+}
+
 class CarijoApp extends StatelessWidget {
   const CarijoApp({super.key});
 
@@ -79,40 +96,11 @@ class CarijoApp extends StatelessWidget {
         // Global Shortcuts Wrapper
         return CallbackShortcuts(
           bindings: {
-            const SingleActivator(LogicalKeyboardKey.keyK, control: true): () {
-              showDialog(
-                context: context, 
-                builder: (_) => const CommandPalette(),
-                barrierColor: Colors.black.withValues(alpha: 0.7),
-              );
-            },
-            const SingleActivator(LogicalKeyboardKey.keyP, control: true, shift: true): () {
-              showDialog(
-                context: context, 
-                builder: (_) => const CommandPalette(),
-                barrierColor: Colors.black.withValues(alpha: 0.7),
-              );
-            },
-            const SingleActivator(LogicalKeyboardKey.keyK, meta: true): () {
-              // MacOS support
-              showDialog(
-                context: context, 
-                builder: (_) => const CommandPalette(),
-                barrierColor: Colors.black.withValues(alpha: 0.7),
-              );
-            },
-            const SingleActivator(LogicalKeyboardKey.keyP, meta: true, shift: true): () {
-              // MacOS support
-              showDialog(
-                context: context, 
-                builder: (_) => const CommandPalette(),
-                barrierColor: Colors.black.withValues(alpha: 0.7),
-              );
-            },
-            // Quick Capture shortcut could be globally bound here too if window focus permits
-            const SingleActivator(LogicalKeyboardKey.keyN, control: true): () {
-               showDialog(context: context, builder: (_) => const QuickCaptureDialog());
-            },
+            const SingleActivator(LogicalKeyboardKey.keyK, control: true): () => _showAnimatedDialog(context, const CommandPalette()),
+            const SingleActivator(LogicalKeyboardKey.keyP, control: true, shift: true): () => _showAnimatedDialog(context, const CommandPalette()),
+            const SingleActivator(LogicalKeyboardKey.keyK, meta: true): () => _showAnimatedDialog(context, const CommandPalette()),
+            const SingleActivator(LogicalKeyboardKey.keyP, meta: true, shift: true): () => _showAnimatedDialog(context, const CommandPalette()),
+            const SingleActivator(LogicalKeyboardKey.keyN, control: true): () => _showAnimatedDialog(context, const QuickCaptureDialog()),
           },
           child: Focus(
             autofocus: true,

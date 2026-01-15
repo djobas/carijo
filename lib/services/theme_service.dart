@@ -64,7 +64,27 @@ class ThemeService extends ChangeNotifier {
     accent: const Color(0xFFfe8019),
   );
 
-  final List<AppTheme> themes = [carijoDark, dracula, nord, gruvbox];
+  static final AppTheme solarizedDark = AppTheme(
+    name: "Solarized Dark",
+    bgMain: const Color(0xFF002b36),
+    bgSidebar: const Color(0xFF073642),
+    borderColor: const Color(0xFF586e75),
+    textMain: const Color(0xFF839496),
+    textMuted: const Color(0xFF657b83),
+    accent: const Color(0xFFb58900),
+  );
+
+  static final AppTheme monokaiPro = AppTheme(
+    name: "Monokai Pro",
+    bgMain: const Color(0xFF2d2a2e),
+    bgSidebar: const Color(0xFF221f22),
+    borderColor: const Color(0xFF403e41),
+    textMain: const Color(0xFFfcfcfa),
+    textMuted: const Color(0xFF727072),
+    accent: const Color(0xFFffd866),
+  );
+
+  final List<AppTheme> themes = [carijoDark, dracula, nord, gruvbox, solarizedDark, monokaiPro];
   AppTheme _currentTheme = carijoDark;
 
   AppTheme get theme => _currentTheme;

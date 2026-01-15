@@ -88,10 +88,14 @@ class _NoteEditorState extends State<NoteEditor> {
         Expanded(
           child: Stack(
             children: [
-              if (widget.isEditing)
-                _buildEditor(theme)
-              else
-                _buildPreview(context, noteService, theme),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 250),
+                switchInCurve: Curves.easeOut,
+                switchOutCurve: Curves.easeIn,
+                child: widget.isEditing
+                    ? _buildEditor(theme)
+                    : _buildPreview(context, noteService, theme),
+              ),
               if (widget.showAutocomplete)
                 _buildAutocompleteOverlay(context, noteService),
             ],

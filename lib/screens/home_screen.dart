@@ -16,6 +16,7 @@ import '../widgets/home/formatting_toolbar.dart';
 import 'deploy_screen.dart';
 import 'graph_view_screen.dart';
 import 'settings_screen.dart';
+import '../widgets/theme_picker.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -95,6 +96,7 @@ class _HomeScreenState extends State<HomeScreen> {
         },
         SingleActivator(LogicalKeyboardKey.keyK, control: true): () => _showCommandPalette(context, noteService),
         SingleActivator(LogicalKeyboardKey.keyP, control: true, shift: true): () => _showCommandPalette(context, noteService),
+        SingleActivator(LogicalKeyboardKey.keyT, control: true): () => _showThemePicker(context),
       },
       child: Focus(
         autofocus: true,
@@ -366,6 +368,7 @@ class _HomeScreenState extends State<HomeScreen> {
           CommandAction(label: "Daily Note", icon: Icons.calendar_today, onAction: () => noteService.openDailyNote()),
           CommandAction(label: "Toggle Preview", icon: Icons.auto_stories, onAction: () => setState(() => _isEditing = !_isEditing)),
           CommandAction(label: "Insert Image", icon: Icons.image, onAction: () => _pickAndInsertImage(noteService)),
+          CommandAction(label: "Change Theme", icon: Icons.palette, onAction: () => _showThemePicker(context)),
           CommandAction(label: "Graph View", icon: Icons.hub, onAction: () async {
             final Note? selected = await Navigator.push<Note>(context, MaterialPageRoute(builder: (_) => GraphViewScreen(notes: noteService.notes)));
             if (selected != null) {
@@ -376,6 +379,23 @@ class _HomeScreenState extends State<HomeScreen> {
           CommandAction(label: "Settings", icon: Icons.settings, onAction: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()))),
         ],
       ),
+    );
+  }
+
+  void _showThemePicker(BuildContext context) {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: "Theme Picker",
+      barrierColor: Colors.black.withValues(alpha: 0.7),
+      transitionDuration: const Duration(milliseconds: 200),
+      pageBuilder: (context, animation, secondaryAnimation) => const ThemePicker(),
+      transitionBuilder: (context, animation, secondaryAnimation, child) {
+        return ScaleTransition(
+          scale: CurvedAnimation(parent: animation, curve: Curves.easeOutBack),
+          child: FadeTransition(opacity: animation, child: child),
+        );
+      },
     );
   }
 
