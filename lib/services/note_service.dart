@@ -175,6 +175,56 @@ class NoteService extends ChangeNotifier {
     return getBacklinksUseCase(targetNote: note, allNotes: _notes);
   }
 
+  double fuzzyScore(String query, String target) {
+    if (query.isEmpty) return 1.0;
+    query = query.toLowerCase();
+    target = target.toLowerCase();
+    
+    if (target.contains(query)) {
+      if (target.startsWith(query)) return 1.0;
+      return 0.8;
+    }
+    
+    int queryIdx = 0;
+    int targetIdx = 0;
+    int matches = 0;
+    int gaps = 0;
+    
+    while (queryIdx < query.length && targetIdx < target.length) {
+      if (query[queryIdx] == target[targetIdx]) {
+        queryIdx++;
+        matches++;
+      } else {
+        gaps++;
+      }
+      targetIdx++;
+    }
+    
+    if (matches == query.length) {
+      return 0.5 / (1 + gaps * 0.1);
+    }
+    
+    return 0.0;
+  }
+
+  List<Note> searchNotes(String query) {
+    if (query.isEmpty) return [];
+    
+    final results = <MapEntry<Note, double>>[];
+    
+    for (var note in _notes) {
+      double score = fuzzyScore(query, note.title) * 2.0;
+      score = score > 0 ? score : fuzzyScore(query, note.content);
+      
+      if (score > 0) {
+        results.add(MapEntry(note, score));
+      }
+    }
+    
+    results.sort((a, b) => b.value.compareTo(a.value));
+    return results.map((e) => e.key).toList();
+  }
+
   void selectNote(Note note) {
     _selectedNote = note;
     notifyListeners();
@@ -260,6 +310,21 @@ class NoteService extends ChangeNotifier {
     } catch (e) {
       debugPrint("Error deleting note: $e");
     }
+  }
+
+  Future<void> saveNote(String filename, String content) async {
+    if (_notesPath == null) return;
+    
+    if (!filename.endsWith('.md')) filename += '.md';
+    final path = '$_notesPath${Platform.pathSeparator}$filename';
+    
+    await repository.saveNote(path, content);
+    await refreshNotes();
+    
+    try {
+      final newNote = _notes.firstWhere((n) => n.path == path);
+      selectNote(newNote);
+    } catch (_) {}
   }
 
   Future<void> updateCurrentNote(String newContent) async {
