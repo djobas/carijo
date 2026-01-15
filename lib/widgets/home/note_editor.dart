@@ -65,7 +65,7 @@ class _MermaidWidgetState extends State<MermaidWidget> {
         </html>
       """;
       
-      await _controller.loadHtmlString(html);
+      await _controller.loadStringContent(html);
       if (mounted) setState(() => _initialized = true);
     } catch (e) {
       debugPrint("Mermaid Init Error: $e");
@@ -114,7 +114,7 @@ class LatexBlockSyntax extends md.BlockSyntax {
 
   @override
   md.Node parse(md.BlockParser parser) {
-    final match = pattern.firstMatch(parser.current)!;
+    final match = pattern.firstMatch(parser.current.content)!;
     final content = match.group(1) ?? "";
     parser.advance();
     return md.Element.text('latex-block', content);
