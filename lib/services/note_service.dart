@@ -1,14 +1,12 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:yaml/yaml.dart';
-import 'package:path/path.dart' as p;
 export '../domain/models/note.dart';
 import '../domain/models/note.dart';
-
-// Models moved to lib/domain/models/note.dart
+import '../domain/repositories/note_repository.dart';
 
 class NoteService extends ChangeNotifier {
+  final NoteRepository repository;
   String? _notesPath;
   List<Note> _notes = [];
   NoteFolder? _rootFolder;
@@ -61,7 +59,7 @@ class NoteService extends ChangeNotifier {
     notifyListeners();
   }
 
-  NoteService() {
+  NoteService(this.repository) {
     _init();
   }
 
@@ -89,76 +87,28 @@ class NoteService extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final dir = Directory(_notesPath!);
-      if (await dir.exists()) {
-        final List<FileSystemEntity> entities = dir.listSync(recursive: true);
-        final List<Note> loadedNotes = [];
-
-        for (var entity in entities) {
-          // Skip internal directories
-          if (entity.path.contains('${Platform.pathSeparator}.') || 
-              entity.path.contains('${Platform.pathSeparator}assets${Platform.pathSeparator}')) {
-            continue;
-          }
-
-          if (entity is File && entity.path.endsWith('.md')) {
-            final content = await entity.readAsString();
-            final stat = await entity.stat();
-            
-            // Extract Frontmatter and Title
-            final noteData = _parseNoteContent(content, entity.uri.pathSegments.last);
-            
-            loadedNotes.add(Note(
-              title: noteData['title'], 
-              content: content, 
-              path: entity.path,
-              modified: stat.modified,
-              metadata: noteData['metadata'],
-              tags: noteData['tags'],
-              outgoingLinks: noteData['outgoingLinks'],
-            ));
-          }
-        }
-        // Sort by newest
-        loadedNotes.sort((a, b) => b.modified.compareTo(a.modified));
-        _notes = loadedNotes;
-        
-        // Build Backlinks
-        _buildBacklinks();
-        // Build Folder Tree
-        _buildFolderTree();
-      }
+      final loadedNotes = await repository.getAllNotes(_notesPath!);
+      // Sort by newest
+      loadedNotes.sort((a, b) => b.modified.compareTo(a.modified));
+      _notes = loadedNotes;
+      
+      // Build Backlinks
+      _buildBacklinks();
+      // Build Folder Tree
+      _buildFolderTree();
     } catch (e) {
       print("Error loading notes: $e");
     }
 
     _isLoading = false;
     _buildTags();
-    _scanTemplates();
+    await _scanTemplates();
     notifyListeners();
   }
 
   Future<String?> addImageToNote(File imageFile) async {
     if (_notesPath == null) return null;
-
-    try {
-      final assetsDir = Directory('$_notesPath${Platform.pathSeparator}assets');
-      if (!await assetsDir.exists()) {
-        await assetsDir.create(recursive: true);
-      }
-
-      final fileName = p.basename(imageFile.path);
-      final targetPath = p.join(assetsDir.path, fileName);
-      
-      // Copy the file
-      await imageFile.copy(targetPath);
-      
-      // Return the standard markdown link with relative path
-      return '![](assets/$fileName)';
-    } catch (e) {
-      print("Error adding image: $e");
-      return null;
-    }
+    return await repository.uploadImage(_notesPath!, imageFile);
   }
 
   void _buildFolderTree() {
@@ -167,8 +117,9 @@ class NoteService extends ChangeNotifier {
       return;
     }
 
+    // This logic stays here as it's about organizing the state for the UI
     final root = NoteFolder(
-      name: p.basename(_notesPath!),
+      name: _notesPath!.split(RegExp(r'[/\\]')).last,
       path: _notesPath!,
       subfolders: [],
       notes: [],
@@ -176,15 +127,22 @@ class NoteService extends ChangeNotifier {
     );
 
     for (var note in _notes) {
-      final relativePath = p.relative(note.path, from: _notesPath);
-      final parts = p.split(relativePath);
+      // Manual path comparison/splitting to avoid 'path' dependency in models if possible
+      // but 'path' is used in note object so it's okay for now.
+      // For a truly clean approach, relative path calculation could be in a utility.
+      
+      // Simplified relative path split
+      final relativePath = note.path.substring(_notesPath!.length).replaceFirst(RegExp(r'^[/\\]'), '');
+      if (relativePath.isEmpty) continue;
+      
+      final parts = relativePath.split(RegExp(r'[/\\]'));
       
       NoteFolder currentFolder = root;
       
       // Traverse/create subfolders
       for (int i = 0; i < parts.length - 1; i++) {
         final folderName = parts[i];
-        final folderPath = p.join(currentFolder.path, folderName);
+        final folderPath = "${currentFolder.path}${Platform.pathSeparator}$folderName";
         
         NoteFolder nextFolder;
         final existing = currentFolder.subfolders.where((f) => f.name == folderName);
@@ -249,12 +207,8 @@ class NoteService extends ChangeNotifier {
   }
 
   List<BacklinkMatch> getBacklinksFor(Note note) {
-    final filename = note.path.split(Platform.pathSeparator).last.replaceAll('.md', '');
-    final List<Note> linkedNotes = [];
-    final seenPaths = <String>{};
-    
+    final filename = note.path.split(RegExp(r'[/\\]')).last.replaceAll('.md', '');
     final titlesToMatch = [note.title, filename];
-    
     final results = <BacklinkMatch>[];
     
     for (var otherNote in _notes) {
@@ -305,7 +259,6 @@ class NoteService extends ChangeNotifier {
     target = target.toLowerCase();
     
     if (target.contains(query)) {
-      // Bonus if it starts with the query
       if (target.startsWith(query)) return 1.0;
       return 0.8;
     }
@@ -326,7 +279,6 @@ class NoteService extends ChangeNotifier {
     }
     
     if (matches == query.length) {
-      // All chars found in order. Score decreases with more gaps.
       return 0.5 / (1 + gaps * 0.1);
     }
     
@@ -345,7 +297,15 @@ class NoteService extends ChangeNotifier {
     final filename = "${title ?? 'Untitled $timestamp'}.md";
     final defaultContent = content ?? "# New Note\n\nStart writing here...";
     
-    await saveNote(filename, defaultContent);
+    final path = "${_notesPath}${Platform.pathSeparator}$filename";
+    await repository.saveNote(path, defaultContent);
+    await refreshNotes();
+    
+    // Select the newly created note
+    try {
+      final newNote = _notes.firstWhere((n) => n.path == path);
+      selectNote(newNote);
+    } catch (_) {}
   }
 
   Future<void> createFromTemplate(Note template, String newNoteTitle) async {
@@ -358,10 +318,16 @@ class NoteService extends ChangeNotifier {
     content = content.replaceAll('{{title}}', newNoteTitle);
     content = content.replaceAll('{{date}}', dateStr);
     
-    // Also try to update title in frontmatter if it exists and uses a literal value
-    // (though usually templates should use {{title}})
+    final filename = newNoteTitle.endsWith('.md') ? newNoteTitle : '$newNoteTitle.md';
+    final path = "${_notesPath}${Platform.pathSeparator}$filename";
     
-    await saveNote(newNoteTitle, content);
+    await repository.saveNote(path, content);
+    await refreshNotes();
+    
+    try {
+      final newNote = _notes.firstWhere((n) => n.path == path);
+      selectNote(newNote);
+    } catch (_) {}
   }
 
   Future<void> openDailyNote() async {
@@ -371,19 +337,17 @@ class NoteService extends ChangeNotifier {
     final dateStr = "${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}";
     final filename = "$dateStr.md";
     
-    // Check if it already exists in memory
     final existing = _notes.where((n) => n.path.endsWith(filename));
     if (existing.isNotEmpty) {
       selectNote(existing.first);
       return;
     }
 
-    // Otherwise check file system or create
-    final path = '$_notesPath/$filename';
+    final path = '$_notesPath${Platform.pathSeparator}$filename';
     final file = File(path);
 
     if (!await file.exists()) {
-      await file.writeAsString('# $dateStr\n\n#daily\n\n');
+      await repository.saveNote(path, '# $dateStr\n\n#daily\n\n');
       await refreshNotes();
     }
 
@@ -397,49 +361,17 @@ class NoteService extends ChangeNotifier {
 
   Future<void> _scanTemplates() async {
     if (_notesPath == null) return;
-    final templateDir = Directory('$_notesPath${Platform.pathSeparator}.templates');
-    if (!await templateDir.exists()) {
-      _templates = [];
-      return;
-    }
-
-    final List<Note> loadedTemplates = [];
-    final entities = templateDir.listSync();
-    
-    for (var entity in entities) {
-      if (entity is File && entity.path.endsWith('.md')) {
-        final content = await entity.readAsString();
-        final filename = entity.path.split(Platform.pathSeparator).last;
-        final noteData = _parseNoteContent(content, filename);
-        
-        loadedTemplates.add(Note(
-          title: noteData['title'],
-          content: content,
-          path: entity.path,
-          modified: (await entity.stat()).modified,
-          metadata: noteData['metadata'],
-          tags: noteData['tags'],
-          outgoingLinks: noteData['outgoingLinks'],
-          isPublished: noteData['isPublished'] ?? false,
-          category: noteData['category'],
-          slug: noteData['slug'],
-        ));
-      }
-    }
-    _templates = loadedTemplates;
+    _templates = await repository.getTemplates(_notesPath!);
     notifyListeners();
   }
 
   Future<void> deleteNote(Note note) async {
     try {
-      final file = File(note.path);
-      if (await file.exists()) {
-        await file.delete();
-        if (_selectedNote?.path == note.path) {
-          _selectedNote = null;
-        }
-        await refreshNotes();
+      await repository.deleteNote(note.path);
+      if (_selectedNote?.path == note.path) {
+        _selectedNote = null;
       }
+      await refreshNotes();
     } catch (e) {
       print("Error deleting note: $e");
     }
@@ -448,58 +380,34 @@ class NoteService extends ChangeNotifier {
   Future<void> saveNote(String filename, String content) async {
     if (_notesPath == null) return;
     
-    // Ensure .md extension
     if (!filename.endsWith('.md')) filename += '.md';
+    final path = '$_notesPath${Platform.pathSeparator}$filename';
     
-    // Normalize path to avoid double separators or slash mismatches
-    final dir = Directory(_notesPath!);
-    final path = File('${dir.path}${Platform.pathSeparator}$filename').path;
-    
-    final file = File(path);
-    await file.writeAsString(content);
+    await repository.saveNote(path, content);
     await refreshNotes();
     
-    // Select the newly created note
     try {
-      final newNote = _notes.firstWhere(
-        (n) => File(n.path).path == path, 
-        orElse: () => _notes.isNotEmpty ? _notes.first : throw Exception("No notes found after saving")
-      );
+      final newNote = _notes.firstWhere((n) => n.path == path);
       selectNote(newNote);
-    } catch (e) {
-      print("Warning: Could not auto-select new note: $e");
-    }
+    } catch (_) {}
   }
 
   Future<void> updateCurrentNote(String newContent) async {
     if (_selectedNote == null) return;
-    
-    // Skip auto-save if not enabled for this path yet
     if (!_autoSaveEnabledPaths.contains(_selectedNote!.path)) return;
 
-    final file = File(_selectedNote!.path);
-    await file.writeAsString(newContent);
+    await repository.saveNote(_selectedNote!.path, newContent);
     
-    // Re-parse to update title/tags in memory
-    final noteData = _parseNoteContent(newContent, file.uri.pathSegments.last);
-
     // Optimistic update
     final index = _notes.indexWhere((n) => n.path == _selectedNote!.path);
     if (index != -1) {
-      _notes[index] = Note(
-        title: noteData['title'],
+      _notes[index] = Note.fromContent(
         content: newContent,
-        path: _notes[index].path,
+        path: _selectedNote!.path,
         modified: DateTime.now(),
-        metadata: noteData['metadata'],
-        tags: noteData['tags'],
-        outgoingLinks: noteData['outgoingLinks'],
-        isPublished: noteData['isPublished'] ?? false,
-        category: noteData['category'],
-        slug: noteData['slug'],
       );
       _selectedNote = _notes[index];
-      _buildTags(); // Update global tags map
+      _buildTags();
       notifyListeners();
     }
   }
@@ -507,84 +415,14 @@ class NoteService extends ChangeNotifier {
   Future<void> manualSaveCurrentNote(String content) async {
     if (_selectedNote == null) return;
     
-    // 1. Perform the save
-    final file = File(_selectedNote!.path);
-    await file.writeAsString(content);
-    
-    // 2. Enable auto-save for this note for future edits
+    await repository.saveNote(_selectedNote!.path, content);
     _autoSaveEnabledPaths.add(_selectedNote!.path);
     
-    // 3. Refresh metadata/title (especially if user just typed an H1)
     await refreshNotes();
     
-    // 4. Force selection update to reflect potential title change
-    final updatedNote = _notes.firstWhere((n) => n.path == file.path, orElse: () => _notes.first);
+    final updatedNote = _notes.firstWhere((n) => n.path == _selectedNote!.path, orElse: () => _notes.first);
     selectNote(updatedNote);
     
     notifyListeners();
-  }
-
-  Map<String, dynamic> _parseNoteContent(String content, String filename) {
-    String title = filename;
-    Map<String, dynamic> metadata = {};
-    Set<String> tags = {};
-
-    // 1. Try Frontmatter
-    final RegExp frontmatterRegex = RegExp(r'^---\s*\n([\s\S]*?)\n---\s*\n');
-    final match = frontmatterRegex.firstMatch(content);
-
-    if (match != null) {
-      try {
-        final yamlStr = match.group(1);
-        final yaml = loadYaml(yamlStr!);
-        if (yaml is Map) {
-          metadata = Map<String, dynamic>.from(yaml);
-          if (metadata.containsKey('title')) {
-            title = metadata['title'].toString();
-          }
-          if (metadata.containsKey('tags')) {
-            final dynamic yamlTags = metadata['tags'];
-            if (yamlTags is List) {
-              tags.addAll(yamlTags.map((t) => t.toString()));
-            } else if (yamlTags is String) {
-              tags.add(yamlTags);
-            }
-          }
-        }
-      } catch (e) {
-        print("Error parsing frontmatter: $e");
-      }
-    }
-
-    // 2. Try H1 for Title (if no Title in Frontmatter)
-    if (title == filename) {
-      final RegExp h1Regex = RegExp(r'^#\s+(.*)$', multiLine: true);
-      final h1Match = h1Regex.firstMatch(content);
-      if (h1Match != null) {
-        title = h1Match.group(1)!.trim();
-      }
-    }
-
-    // 3. Extract #tags from content
-    final RegExp tagRegex = RegExp(r'#(\w+)');
-    final tagMatches = tagRegex.allMatches(content);
-    for (var m in tagMatches) {
-      tags.add(m.group(1)!);
-    }
-
-    // 4. Extract outgoing links [[Title]]
-    final RegExp linkRegex = RegExp(r'\[\[(.*?)\]\]');
-    final linkMatches = linkRegex.allMatches(content);
-    final List<String> outgoingLinks = linkMatches.map((m) => m.group(1)!.trim()).toList();
-
-    return {
-      'title': title, 
-      'metadata': metadata, 
-      'tags': tags.toList(),
-      'outgoingLinks': outgoingLinks.toSet().toList(), // Deduplicate
-      'isPublished': metadata['published'] == true,
-      'category': metadata['category']?.toString(),
-      'slug': metadata['slug']?.toString(),
-    };
   }
 }

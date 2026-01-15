@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:path/path.dart' as p;
-import 'package:yaml/yaml.dart';
 import '../../domain/models/note.dart';
 import '../../domain/repositories/note_repository.dart';
 
@@ -22,16 +21,11 @@ class FileNoteRepository implements NoteRepository {
       if (entity is File && entity.path.endsWith('.md')) {
         final content = await entity.readAsString();
         final stat = await entity.stat();
-        final noteData = _parseNoteContent(content, entity.uri.pathSegments.last);
 
-        loadedNotes.add(Note(
-          title: noteData['title'],
+        loadedNotes.add(Note.fromContent(
           content: content,
           path: entity.path,
           modified: stat.modified,
-          metadata: noteData['metadata'],
-          tags: noteData['tags'],
-          outgoingLinks: noteData['outgoingLinks'],
         ));
       }
     }
@@ -80,81 +74,15 @@ class FileNoteRepository implements NoteRepository {
     for (var entity in entities) {
       if (entity is File && entity.path.endsWith('.md')) {
         final content = await entity.readAsString();
-        final filename = p.basename(entity.path);
-        final noteData = _parseNoteContent(content, filename);
+        final stat = await entity.stat();
 
-        loadedTemplates.add(Note(
-          title: noteData['title'],
+        loadedTemplates.add(Note.fromContent(
           content: content,
           path: entity.path,
-          modified: (await entity.stat()).modified,
-          metadata: noteData['metadata'],
-          tags: noteData['tags'],
-          outgoingLinks: noteData['outgoingLinks'],
-          isPublished: noteData['isPublished'] ?? false,
-          category: noteData['category'],
-          slug: noteData['slug'],
+          modified: stat.modified,
         ));
       }
     }
     return loadedTemplates;
-  }
-
-  Map<String, dynamic> _parseNoteContent(String content, String filename) {
-    String title = filename;
-    Map<String, dynamic> metadata = {};
-    Set<String> tags = {};
-
-    final RegExp frontmatterRegex = RegExp(r'^---\s*\n([\s\S]*?)\n---\s*\n');
-    final match = frontmatterRegex.firstMatch(content);
-
-    if (match != null) {
-      try {
-        final yamlStr = match.group(1);
-        final yaml = loadYaml(yamlStr!);
-        if (yaml is Map) {
-          metadata = Map<String, dynamic>.from(yaml);
-          if (metadata.containsKey('title')) {
-            title = metadata['title'].toString();
-          }
-          if (metadata.containsKey('tags')) {
-            final dynamic yamlTags = metadata['tags'];
-            if (yamlTags is List) {
-              tags.addAll(yamlTags.map((t) => t.toString()));
-            } else if (yamlTags is String) {
-              tags.add(yamlTags);
-            }
-          }
-        }
-      } catch (e) {}
-    }
-
-    if (title == filename) {
-      final RegExp h1Regex = RegExp(r'^#\s+(.*)$', multiLine: true);
-      final h1Match = h1Regex.firstMatch(content);
-      if (h1Match != null) {
-        title = h1Match.group(1)!.trim();
-      }
-    }
-
-    final RegExp tagRegex = RegExp(r'#(\w+)');
-    final tagMatches = tagRegex.allMatches(content);
-    for (var m in tagMatches) {
-      tags.add(m.group(1)!);
-    }
-
-    final RegExp linkRegex = RegExp(r'\[\[(.*?)\]\]');
-    final linkMatches = linkRegex.allMatches(content);
-    final List<String> outgoingLinks = linkMatches.map((m) => m.group(1)!.trim()).toList();
-
-    return {
-      'title': title,
-      'metadata': metadata,
-      'tags': tags.toList(),
-      'outgoingLinks': outgoingLinks.toSet().toList(),
-      'isPublished': metadata['published'] == true,
-      'category': metadata['category']?.toString(),
-      'slug': metadata['slug']?.toString(),
-    };
   }
 }

@@ -1,3 +1,5 @@
+import 'package:yaml/yaml.dart';
+
 class Note {
   final String title;
   final String content;
@@ -46,6 +48,80 @@ class Note {
       isPublished: isPublished ?? this.isPublished,
       category: category ?? this.category,
       slug: slug ?? this.slug,
+    );
+  }
+
+  static Note fromContent({
+    required String content,
+    required String path,
+    required DateTime modified,
+    String? filename,
+  }) {
+    String effectiveFilename = filename ?? path.split(RegExp(r'[/\\]')).last;
+    String title = effectiveFilename;
+    Map<String, dynamic> metadata = {};
+    Set<String> tags = {};
+
+    // 1. Try Frontmatter
+    final RegExp frontmatterRegex = RegExp(r'^---\s*\n([\s\S]*?)\n---\s*\n');
+    final match = frontmatterRegex.firstMatch(content);
+
+    if (match != null) {
+      try {
+        final yamlStr = match.group(1);
+        final yaml = loadYaml(yamlStr!);
+        if (yaml is Map) {
+          metadata = Map<String, dynamic>.from(yaml);
+          if (metadata.containsKey('title')) {
+            title = metadata['title'].toString();
+          }
+          if (metadata.containsKey('tags')) {
+            final dynamic yamlTags = metadata['tags'];
+            if (yamlTags is List) {
+              tags.addAll(yamlTags.map((t) => t.toString()));
+            } else if (yamlTags is String) {
+              tags.add(yamlTags);
+            }
+          }
+        }
+      } catch (e) {
+        // Silently skip parsing errors
+      }
+    }
+
+    // 2. Try H1 for Title (if no Title in Frontmatter)
+    if (title == effectiveFilename) {
+      final RegExp h1Regex = RegExp(r'^#\s+(.*)$', multiLine: true);
+      final h1Match = h1Regex.firstMatch(content);
+      if (h1Match != null) {
+        title = h1Match.group(1)!.trim();
+      }
+    }
+
+    // 3. Extract #tags from content
+    final RegExp tagRegex = RegExp(r'#(\w+)');
+    final tagMatches = tagRegex.allMatches(content);
+    for (var m in tagMatches) {
+      tags.add(m.group(1)!);
+    }
+
+    // 4. Extract outgoing links [[Title]]
+    final RegExp linkRegex = RegExp(r'\[\[(.*?)\]\]');
+    final linkMatches = linkRegex.allMatches(content);
+    final List<String> outgoingLinks =
+        linkMatches.map((m) => m.group(1)!.trim()).toSet().toList();
+
+    return Note(
+      title: title,
+      content: content,
+      path: path,
+      modified: modified,
+      metadata: metadata,
+      tags: tags.toList(),
+      outgoingLinks: outgoingLinks,
+      isPublished: metadata['published'] == true,
+      category: metadata['category']?.toString(),
+      slug: metadata['slug']?.toString(),
     );
   }
 }

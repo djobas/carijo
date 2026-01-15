@@ -9,6 +9,7 @@ import 'components/quick_capture.dart';
 import 'widgets/command_palette.dart';
 import 'services/note_service.dart';
 import 'services/theme_service.dart';
+import 'data/repositories/file_note_repository.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,7 +20,7 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => NoteService()),
+        ChangeNotifierProvider(create: (_) => NoteService(FileNoteRepository())),
         ChangeNotifierProvider(create: (_) => GitService()),
         ChangeNotifierProvider.value(value: supabaseService),
         ChangeNotifierProvider(create: (_) => ThemeService()),
