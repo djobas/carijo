@@ -35,9 +35,10 @@ dependencies:
   isar_flutter_libs: ^3.1.0+1
   path_provider: ^2.1.2
   flutter_math_fork: ^0.7.2
-  # Speech to Text
-  speech_to_text: ^7.3.0
-  speech_to_text_windows: any
+  # Audio Recording for STT
+  record: ^5.1.0
+  # HTTP for OpenAI API
+  http: ^1.2.1
 
 dev_dependencies:
   flutter_test:

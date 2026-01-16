@@ -13,6 +13,7 @@
         "flutter_markdown",
         "flutter_math_fork",
         "google_fonts",
+        "http",
         "intl",
         "isar",
         "isar_flutter_libs",
@@ -20,9 +21,8 @@
         "path",
         "path_provider",
         "provider",
+        "record",
         "shared_preferences",
-        "speech_to_text",
-        "speech_to_text_windows",
         "supabase_flutter",
         "yaml"
       ],
@@ -111,6 +111,16 @@
         "stream_channel",
         "test_api",
         "vector_math"
+      ]
+    },
+    {
+      "name": "http",
+      "version": "1.6.0",
+      "dependencies": [
+        "async",
+        "http_parser",
+        "meta",
+        "web"
       ]
     },
     {
@@ -685,6 +695,21 @@
       ]
     },
     {
+      "name": "web",
+      "version": "1.1.1",
+      "dependencies": []
+    },
+    {
+      "name": "http_parser",
+      "version": "4.1.2",
+      "dependencies": [
+        "collection",
+        "source_span",
+        "string_scanner",
+        "typed_data"
+      ]
+    },
+    {
       "name": "tuple",
       "version": "2.0.2",
       "dependencies": []
@@ -752,11 +777,6 @@
       "dependencies": []
     },
     {
-      "name": "web",
-      "version": "1.1.1",
-      "dependencies": []
-    },
-    {
       "name": "url_launcher",
       "version": "6.3.2",
       "dependencies": [
@@ -783,16 +803,6 @@
         "rxdart",
         "storage_client",
         "yet_another_json_isolate"
-      ]
-    },
-    {
-      "name": "http",
-      "version": "1.6.0",
-      "dependencies": [
-        "async",
-        "http_parser",
-        "meta",
-        "web"
       ]
     },
     {
@@ -951,16 +961,6 @@
       "version": "4.9.0",
       "dependencies": [
         "meta"
-      ]
-    },
-    {
-      "name": "http_parser",
-      "version": "4.1.2",
-      "dependencies": [
-        "collection",
-        "source_span",
-        "string_scanner",
-        "typed_data"
       ]
     },
     {
@@ -1340,41 +1340,77 @@
       ]
     },
     {
-      "name": "speech_to_text",
-      "version": "7.3.0",
+      "name": "record",
+      "version": "5.2.1",
       "dependencies": [
-        "clock",
         "flutter",
-        "flutter_web_plugins",
-        "json_annotation",
-        "meta",
-        "pedantic",
-        "speech_to_text_platform_interface",
-        "speech_to_text_windows",
-        "web"
+        "record_android",
+        "record_darwin",
+        "record_linux",
+        "record_platform_interface",
+        "record_web",
+        "record_windows",
+        "uuid"
       ]
     },
     {
-      "name": "speech_to_text_platform_interface",
-      "version": "2.3.0",
+      "name": "record_windows",
+      "version": "1.0.7",
       "dependencies": [
         "flutter",
-        "meta",
+        "record_platform_interface"
+      ]
+    },
+    {
+      "name": "record_platform_interface",
+      "version": "1.4.0",
+      "dependencies": [
+        "flutter",
         "plugin_platform_interface"
       ]
     },
     {
-      "name": "speech_to_text_windows",
-      "version": "1.0.0+beta.8",
+      "name": "record_darwin",
+      "version": "1.2.2",
       "dependencies": [
         "flutter",
-        "speech_to_text_platform_interface"
+        "record_platform_interface"
       ]
     },
     {
-      "name": "pedantic",
-      "version": "1.11.1",
-      "dependencies": []
+      "name": "record_linux",
+      "version": "0.7.2",
+      "dependencies": [
+        "flutter",
+        "record_platform_interface"
+      ]
+    },
+    {
+      "name": "record_web",
+      "version": "1.2.2",
+      "dependencies": [
+        "flutter",
+        "flutter_web_plugins",
+        "record_platform_interface",
+        "web"
+      ]
+    },
+    {
+      "name": "record_android",
+      "version": "1.4.5",
+      "dependencies": [
+        "flutter",
+        "record_platform_interface"
+      ]
+    },
+    {
+      "name": "uuid",
+      "version": "4.5.2",
+      "dependencies": [
+        "crypto",
+        "fixnum",
+        "meta"
+      ]
     }
   ],
   "configVersion": 1

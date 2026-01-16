@@ -538,15 +538,15 @@ class _HomeScreenState extends State<HomeScreen> {
           isListening: isListening,
           theme: theme,
           onPressed: () async {
-            if (isListening) {
-              await speechService.stopListening();
-            } else {
-              final ok = await speechService.initialize();
-              if (ok) {
-                await speechService.startListening(onResult: (text) {
-                  _insertTextAtCursor(text);
-                });
-              } else {
+            if (speechService.isRecording) {
+              await speechService.stopListening(onResult: (text) {
+                _insertTextAtCursor(text);
+              });
+            } else if (!speechService.isProcessing) {
+              final ok = await speechService.startListening(onResult: (text) {
+                   _insertTextAtCursor(text);
+              });
+              if (!ok && speechService.lastError.isNotEmpty) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content: Text("🎤 Error: ${speechService.lastError}"),
@@ -654,15 +654,25 @@ class _MicPulseButtonState extends State<_MicPulseButton> with SingleTickerProvi
                   shape: BoxShape.circle,
                 ),
               ),
-            IconButton(
-              onPressed: widget.onPressed,
-              icon: Icon(
-                widget.isListening ? Icons.mic : Icons.mic_none,
-                color: widget.isListening ? widget.theme.accent : widget.theme.textMuted,
-                size: 20,
+            if (Provider.of<SpeechService>(context).isProcessing)
+               SizedBox(
+                width: 24,
+                height: 24,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: widget.theme.accent,
+                ),
+              )
+            else
+              IconButton(
+                onPressed: widget.onPressed,
+                icon: Icon(
+                  widget.isListening ? Icons.mic : Icons.mic_none,
+                  color: widget.isListening ? widget.theme.accent : widget.theme.textMuted,
+                  size: 20,
+                ),
+                tooltip: widget.isListening ? "Stop Dictation" : "Start Dictation",
               ),
-              tooltip: widget.isListening ? "Stop Dictation" : "Start Dictation",
-            ),
           ],
         );
       },

@@ -1,132 +1,148 @@
+import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:speech_to_text/speech_recognition_result.dart';
-import 'package:speech_to_text/speech_to_text.dart';
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import 'package:record/record.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:path/path.dart' as p;
 import 'logger_service.dart';
 
-/// Service responsible for handling Speech-to-Text (STT) functionality.
-/// 
-/// Manages the microphone lifecycle, handles permissions, and provides
-/// real-time transcription results.
+/// Service responsible for handling Speech-to-Text (STT) via OpenAI Whisper.
 class SpeechService extends ChangeNotifier {
   static final SpeechService _instance = SpeechService._internal();
   factory SpeechService() => _instance;
   SpeechService._internal();
 
-  final SpeechToText _speech = SpeechToText();
-  bool _isInitialized = false;
-  bool _isListening = false;
+  final AudioRecorder _recorder = AudioRecorder();
+  
+  bool _isRecording = false;
+  bool _isProcessing = false;
+  String _openAIKey = '';
   String _lastWords = '';
-  double _soundLevel = 0.0;
   String _lastError = '';
+  
+  Function(String)? _pendingResultCallback;
 
-  /// Whether the speech engine is currently active and listening.
-  bool get isListening => _isListening;
+  static const String _keyOpenAI = 'openai_api_key';
 
-  /// The current transcription result.
-  String get lastWords => _lastWords;
-
-  /// The current sound level (for visual feedback).
-  double get soundLevel => _soundLevel;
-
-  /// The last error message, if any.
+  bool get isRecording => _isRecording;
+  bool get isProcessing => _isProcessing;
+  bool get isListening => _isRecording || _isProcessing;
+  String get openAIKey => _openAIKey;
   String get lastError => _lastError;
 
-  /// Initializes the speech recognition engine.
-  Future<bool> initialize() async {
-    if (_isInitialized) return true;
+  /// Initializes the service and loads the API key.
+  Future<void> initialize() async {
+    final prefs = await SharedPreferences.getInstance();
+    _openAIKey = prefs.getString(_keyOpenAI) ?? '';
+    notifyListeners();
+  }
+
+  /// Sets and persists the OpenAI API key.
+  Future<void> setOpenAIKey(String key) async {
+    _openAIKey = key;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_keyOpenAI, key);
+    notifyListeners();
+  }
+
+  /// Starts recording audio.
+  Future<bool> startListening({required Function(String) onResult}) async {
+    if (_openAIKey.isEmpty) {
+      _lastError = 'OpenAI API Key not configured';
+      notifyListeners();
+      return false;
+    }
+
+    _pendingResultCallback = onResult;
 
     try {
-      _isInitialized = await _speech.initialize(
-        onStatus: _onSpeechStatus,
-        onError: _onSpeechError,
-      );
-      if (_isInitialized) {
-        LoggerService.info('SpeechService initialized successfully');
-      } else {
-        _lastError = 'Speech recognition not available on this device';
-        LoggerService.warning('SpeechService failed to initialize');
+      if (await _recorder.hasPermission()) {
+        final tempDir = await getTemporaryDirectory();
+        final path = p.join(tempDir.path, 'speech_rec.m4a');
+        
+        // Delete old file if exists
+        final file = File(path);
+        if (await file.exists()) await file.delete();
+
+        const config = RecordConfig();
+        await _recorder.start(config, path: path);
+        _isRecording = true;
+        _lastError = '';
         notifyListeners();
+        return true;
+      } else {
+        _lastError = 'Microphone permission denied';
+        notifyListeners();
+        return false;
       }
     } catch (e) {
-      _lastError = 'Failed to access microphone or speech engine';
-      LoggerService.error('Error initializing SpeechService', error: e);
-      _isInitialized = false;
+      LoggerService.error('Error starting recording', error: e);
+      _lastError = 'Failed to start recording';
       notifyListeners();
+      return false;
     }
-    
-    return _isInitialized;
   }
 
-  /// Starts a new listening session.
-  /// 
-  /// The [onResult] callback is triggered as words are recognized.
-  Future<void> startListening({required Function(String) onResult}) async {
-    if (!_isInitialized) {
-      final ok = await initialize();
-      if (!ok) return;
-    }
-
-    _lastWords = '';
-    _lastError = '';
-    
+  /// Stops recording and triggers transcription.
+  Future<void> stopListening({Function(String)? onResult}) async {
     try {
-      await _speech.listen(
-        onResult: (result) {
-          _lastWords = result.recognizedWords;
-          if (result.finalResult) {
-            onResult(_lastWords);
-          }
-          notifyListeners();
-        },
-        onSoundLevelChange: (level) {
-          _soundLevel = level;
-          notifyListeners();
-        },
-        cancelOnError: true,
-        listenMode: ListenMode.dictation,
-      );
-      _isListening = true;
-      notifyListeners();
+      final path = await _recorder.stop();
+      _isRecording = false;
+      
+      final callback = onResult ?? _pendingResultCallback;
+      
+      if (path != null && callback != null) {
+        _isProcessing = true;
+        notifyListeners();
+        
+        final text = await _transcribeAudio(path);
+        if (text != null && text.isNotEmpty) {
+          callback(text);
+        }
+      }
     } catch (e) {
-      LoggerService.error('Error starting SpeechService listening', error: e);
-      _isListening = false;
+      LoggerService.error('Error stopping recording', error: e);
+      _lastError = 'Transcription failed';
+    } finally {
+      _isRecording = false;
+      _isProcessing = false;
       notifyListeners();
     }
   }
 
-  /// Stops the current listening session and returns the final result.
-  Future<void> stopListening() async {
-    await _speech.stop();
-    _isListening = false;
-    _soundLevel = 0.0;
-    notifyListeners();
-  }
+  Future<String?> _transcribeAudio(String path) async {
+    try {
+      final url = Uri.parse('https://api.openai.com/v1/audio/transcriptions');
+      final request = http.MultipartRequest('POST', url)
+        ..headers['Authorization'] = 'Bearer $_openAIKey'
+        ..fields['model'] = 'whisper-1'
+        ..fields['language'] = 'pt' // Optional: can be dynamic
+        ..files.add(await http.MultipartFile.fromPath('file', path));
 
-  /// Cancels the current listening session without returning results.
-  Future<void> cancelListening() async {
-    await _speech.cancel();
-    _isListening = false;
-    _soundLevel = 0.0;
-    notifyListeners();
-  }
+      final response = await request.send();
+      final responseBody = await response.stream.bytesToString();
 
-  void _onSpeechStatus(String status) {
-    LoggerService.info('Speech status: $status');
-    if (status == 'done' || status == 'notListening') {
-      _isListening = false;
-      _soundLevel = 0.0;
-      notifyListeners();
-    } else if (status == 'listening') {
-      _isListening = true;
-      notifyListeners();
+      if (response.statusCode == 200) {
+        final data = json.decode(responseBody);
+        return data['text'] as String?;
+      } else {
+        final error = json.decode(responseBody);
+        _lastError = error['error']?['message'] ?? 'API Error ${response.statusCode}';
+        LoggerService.error('OpenAI Whisper Error: $responseBody');
+        return null;
+      }
+    } catch (e) {
+      LoggerService.error('Transcription error', error: e);
+      _lastError = 'Connection error: $e';
+      return null;
     }
   }
 
-  void _onSpeechError(errorNotification) {
-    _lastError = errorNotification.errorMsg;
-    LoggerService.error('Speech error: $_lastError');
-    _isListening = false;
-    _soundLevel = 0.0;
-    notifyListeners();
+  @override
+  void dispose() {
+    _recorder.dispose();
+    super.dispose();
   }
 }

@@ -7,6 +7,7 @@ import 'package:file_picker/file_picker.dart';
 import '../services/note_service.dart';
 import '../services/supabase_service.dart';
 import '../services/theme_service.dart';
+import '../services/speech_service.dart';
 import '../plugins/plugin_manager.dart';
 import '../plugins/plugin_interface.dart';
 
@@ -21,6 +22,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final TextEditingController _pathController = TextEditingController();
   final TextEditingController _supabaseUrlController = TextEditingController();
   final TextEditingController _supabaseKeyController = TextEditingController();
+  final TextEditingController _openAIKeyController = TextEditingController();
 
   bool _gitDetected = false;
   String? _gitRemote;
@@ -31,7 +33,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   void initState() {
     super.initState();
     final noteService = Provider.of<NoteService>(context, listen: false);
+    final speechService = Provider.of<SpeechService>(context, listen: false);
+    
     _pathController.text = noteService.notesPath ?? '';
+    _openAIKeyController.text = speechService.openAIKey;
     _loadSupabasePrefs();
     _detectGit();
   }
@@ -164,6 +169,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _buildSectionHeader("PLUGINS", theme),
                 const SizedBox(height: 16),
                 _buildPluginsSection(theme, pluginManager),
+                const SizedBox(height: 32),
+
+                // AI Section (OpenAI)
+                _buildSectionHeader("AI & SPEECH (OPENAI)", theme),
+                const SizedBox(height: 16),
+                _buildOpenAISection(theme),
                 const SizedBox(height: 40),
 
                 // Save Button
@@ -458,11 +469,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
         onPressed: () async {
           final noteService = Provider.of<NoteService>(context, listen: false);
           final supabaseService = Provider.of<SupabaseService>(context, listen: false);
+          final speechService = Provider.of<SpeechService>(context, listen: false);
           final messenger = ScaffoldMessenger.of(context);
           final navigator = Navigator.of(context);
 
           noteService.setNotesPath(_pathController.text);
           await supabaseService.saveConfig(_supabaseUrlController.text.trim(), _supabaseKeyController.text.trim());
+          await speechService.setOpenAIKey(_openAIKeyController.text.trim());
 
           messenger.showSnackBar(const SnackBar(content: Text("✅ Configuration Saved")));
           navigator.pop();
@@ -475,6 +488,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
+      ),
+    );
+  }
+
+  Widget _buildOpenAISection(dynamic theme) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: theme.bgSidebar,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: theme.borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text("OpenAI Whisper API Key", style: GoogleFonts.spaceGrotesk(color: theme.textMain, fontSize: 13, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 8),
+          Text("Required for speech-to-text dictation. Your key is stored locally.", style: GoogleFonts.inter(color: theme.textMuted, fontSize: 11)),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _openAIKeyController,
+            obscureText: true,
+            style: GoogleFonts.jetBrainsMono(color: theme.textMain, fontSize: 12),
+            decoration: InputDecoration(
+              hintText: "sk-...",
+              hintStyle: TextStyle(color: theme.textMuted),
+              filled: true,
+              fillColor: theme.bgMain,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            ),
+          ),
+        ],
       ),
     );
   }

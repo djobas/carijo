@@ -81,7 +81,7 @@ void main() async {
         ChangeNotifierProvider.value(value: themeService),
         ChangeNotifierProvider.value(value: errorHandler),
         ChangeNotifierProvider.value(value: pluginManager),
-        ChangeNotifierProvider(create: (_) => SpeechService()),
+        ChangeNotifierProvider(create: (_) => SpeechService()..initialize()),
       ],
       child: const CarijoApp(),
     ),

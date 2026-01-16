@@ -494,12 +494,6 @@
       "languageVersion": "3.2"
     },
     {
-      "name": "pedantic",
-      "rootUri": "file:///C:/Users/gabri/AppData/Local/Pub/Cache/hosted/pub.dev/pedantic-1.11.1",
-      "packageUri": "lib/",
-      "languageVersion": "2.12"
-    },
-    {
       "name": "petitparser",
       "rootUri": "file:///C:/Users/gabri/AppData/Local/Pub/Cache/hosted/pub.dev/petitparser-7.0.1",
       "packageUri": "lib/",
@@ -558,6 +552,48 @@
       "rootUri": "file:///C:/Users/gabri/AppData/Local/Pub/Cache/hosted/pub.dev/realtime_client-2.7.0",
       "packageUri": "lib/",
       "languageVersion": "3.0"
+    },
+    {
+      "name": "record",
+      "rootUri": "file:///C:/Users/gabri/AppData/Local/Pub/Cache/hosted/pub.dev/record-5.2.1",
+      "packageUri": "lib/",
+      "languageVersion": "3.4"
+    },
+    {
+      "name": "record_android",
+      "rootUri": "file:///C:/Users/gabri/AppData/Local/Pub/Cache/hosted/pub.dev/record_android-1.4.5",
+      "packageUri": "lib/",
+      "languageVersion": "3.5"
+    },
+    {
+      "name": "record_darwin",
+      "rootUri": "file:///C:/Users/gabri/AppData/Local/Pub/Cache/hosted/pub.dev/record_darwin-1.2.2",
+      "packageUri": "lib/",
+      "languageVersion": "3.3"
+    },
+    {
+      "name": "record_linux",
+      "rootUri": "file:///C:/Users/gabri/AppData/Local/Pub/Cache/hosted/pub.dev/record_linux-0.7.2",
+      "packageUri": "lib/",
+      "languageVersion": "3.3"
+    },
+    {
+      "name": "record_platform_interface",
+      "rootUri": "file:///C:/Users/gabri/AppData/Local/Pub/Cache/hosted/pub.dev/record_platform_interface-1.4.0",
+      "packageUri": "lib/",
+      "languageVersion": "3.5"
+    },
+    {
+      "name": "record_web",
+      "rootUri": "file:///C:/Users/gabri/AppData/Local/Pub/Cache/hosted/pub.dev/record_web-1.2.2",
+      "packageUri": "lib/",
+      "languageVersion": "3.5"
+    },
+    {
+      "name": "record_windows",
+      "rootUri": "file:///C:/Users/gabri/AppData/Local/Pub/Cache/hosted/pub.dev/record_windows-1.0.7",
+      "packageUri": "lib/",
+      "languageVersion": "3.5"
     },
     {
       "name": "retry",
@@ -642,24 +678,6 @@
       "rootUri": "file:///C:/Users/gabri/AppData/Local/Pub/Cache/hosted/pub.dev/source_span-1.10.1",
       "packageUri": "lib/",
       "languageVersion": "3.1"
-    },
-    {
-      "name": "speech_to_text",
-      "rootUri": "file:///C:/Users/gabri/AppData/Local/Pub/Cache/hosted/pub.dev/speech_to_text-7.3.0",
-      "packageUri": "lib/",
-      "languageVersion": "3.3"
-    },
-    {
-      "name": "speech_to_text_platform_interface",
-      "rootUri": "file:///C:/Users/gabri/AppData/Local/Pub/Cache/hosted/pub.dev/speech_to_text_platform_interface-2.3.0",
-      "packageUri": "lib/",
-      "languageVersion": "3.0"
-    },
-    {
-      "name": "speech_to_text_windows",
-      "rootUri": "file:///C:/Users/gabri/AppData/Local/Pub/Cache/hosted/pub.dev/speech_to_text_windows-1.0.0+beta.8",
-      "packageUri": "lib/",
-      "languageVersion": "3.0"
     },
     {
       "name": "stack_trace",
@@ -786,6 +804,12 @@
       "rootUri": "file:///C:/Users/gabri/AppData/Local/Pub/Cache/hosted/pub.dev/url_launcher_windows-3.1.5",
       "packageUri": "lib/",
       "languageVersion": "3.8"
+    },
+    {
+      "name": "uuid",
+      "rootUri": "file:///C:/Users/gabri/AppData/Local/Pub/Cache/hosted/pub.dev/uuid-4.5.2",
+      "packageUri": "lib/",
+      "languageVersion": "3.0"
     },
     {
       "name": "vector_graphics",
