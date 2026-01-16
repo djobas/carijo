@@ -541,9 +541,19 @@ class _HomeScreenState extends State<HomeScreen> {
             if (isListening) {
               await speechService.stopListening();
             } else {
-              await speechService.startListening(onResult: (text) {
-                _insertTextAtCursor(text);
-              });
+              final ok = await speechService.initialize();
+              if (ok) {
+                await speechService.startListening(onResult: (text) {
+                  _insertTextAtCursor(text);
+                });
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text("🎤 Error: ${speechService.lastError}"),
+                    backgroundColor: Colors.redAccent,
+                  ),
+                );
+              }
             }
           },
         );

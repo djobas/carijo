@@ -43,11 +43,15 @@ class SpeechService extends ChangeNotifier {
       if (_isInitialized) {
         LoggerService.info('SpeechService initialized successfully');
       } else {
+        _lastError = 'Speech recognition not available on this device';
         LoggerService.warning('SpeechService failed to initialize');
+        notifyListeners();
       }
     } catch (e) {
+      _lastError = 'Failed to access microphone or speech engine';
       LoggerService.error('Error initializing SpeechService', error: e);
       _isInitialized = false;
+      notifyListeners();
     }
     
     return _isInitialized;
