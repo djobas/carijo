@@ -7,6 +7,7 @@ import '../domain/models/note.dart';
 import '../domain/repositories/remote_note_repository.dart';
 import '../domain/use_cases/sync_notes_use_case.dart';
 import 'sync_queue.dart';
+import 'package:path/path.dart' as p;
 
 class SupabaseService extends ChangeNotifier {
   final RemoteNoteRepository repository;
