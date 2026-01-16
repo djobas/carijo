@@ -7,6 +7,8 @@ import 'package:file_picker/file_picker.dart';
 import '../services/note_service.dart';
 import '../services/supabase_service.dart';
 import '../services/theme_service.dart';
+import '../plugins/plugin_manager.dart';
+import '../plugins/plugin_interface.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -114,6 +116,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final themeService = Provider.of<ThemeService>(context);
     final theme = themeService.theme;
     final supabaseService = Provider.of<SupabaseService>(context);
+    final pluginManager = Provider.of<PluginManager>(context);
 
     return Scaffold(
       backgroundColor: theme.bgMain,
@@ -155,6 +158,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _buildSectionHeader("CLOUD SYNC (SUPABASE)", theme),
                 const SizedBox(height: 16),
                 _buildSupabaseSection(theme),
+                const SizedBox(height: 32),
+
+                // Plugins Section
+                _buildSectionHeader("PLUGINS", theme),
+                const SizedBox(height: 16),
+                _buildPluginsSection(theme, pluginManager),
                 const SizedBox(height: 40),
 
                 // Save Button
@@ -466,6 +475,61 @@ class _SettingsScreenState extends State<SettingsScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
+      ),
+    );
+  }
+
+  Widget _buildPluginsSection(dynamic theme, PluginManager pluginManager) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: theme.bgSidebar,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: theme.borderColor),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ...pluginManager.plugins.map((plugin) => Padding(
+            padding: const EdgeInsets.only(bottom: 16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: theme.bgMain,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(plugin.icon, color: theme.accent, size: 20),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(plugin.name, style: GoogleFonts.spaceGrotesk(color: theme.textMain, fontSize: 13, fontWeight: FontWeight.bold)),
+                          const SizedBox(width: 8),
+                          Text("v${plugin.version}", style: GoogleFonts.jetBrainsMono(color: theme.textMuted, fontSize: 10)),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(plugin.description, style: GoogleFonts.inter(color: theme.textMuted, fontSize: 11)),
+                    ],
+                  ),
+                ),
+                Switch(
+                  value: pluginManager.isEnabled(plugin.id),
+                  onChanged: (value) => pluginManager.setEnabled(plugin.id, value),
+                  activeColor: theme.accent,
+                ),
+              ],
+            ),
+          )),
+          if (pluginManager.plugins.isEmpty)
+            Text("No plugins installed", style: GoogleFonts.inter(color: theme.textMuted, fontSize: 12)),
+        ],
       ),
     );
   }

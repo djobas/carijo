@@ -18,6 +18,7 @@ import 'graph_view_screen.dart';
 import 'settings_screen.dart';
 import '../widgets/theme_picker.dart';
 import '../widgets/sync_wizard.dart';
+import '../services/speech_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -223,6 +224,8 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: Icon(Icons.image_outlined, color: theme.textMuted, size: 20),
             tooltip: "Insert Image",
           ),
+          const SizedBox(width: 12),
+          _buildSpeechButton(context, theme),
           const Spacer(),
           IconButton(
             onPressed: () => setState(() => _showProperties = !_showProperties), 
@@ -524,4 +527,113 @@ class _HomeScreenState extends State<HomeScreen> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Note not found: $titleOrPath")));
     }
   }
+
+  Widget _buildSpeechButton(BuildContext context, dynamic theme) {
+    final speechService = Provider.of<SpeechService>(context);
+    final isListening = speechService.isListening;
+
+    return StatefulBuilder(
+      builder: (context, setState) {
+        return _MicPulseButton(
+          isListening: isListening,
+          theme: theme,
+          onPressed: () async {
+            if (isListening) {
+              await speechService.stopListening();
+            } else {
+              await speechService.startListening(onResult: (text) {
+                _insertTextAtCursor(text);
+              });
+            }
+          },
+        );
+      },
+    );
+  }
 }
+
+class _MicPulseButton extends StatefulWidget {
+  final bool isListening;
+  final dynamic theme;
+  final VoidCallback onPressed;
+
+  const _MicPulseButton({
+    required this.isListening,
+    required this.theme,
+    required this.onPressed,
+  });
+
+  @override
+  State<_MicPulseButton> createState() => _MicPulseButtonState();
+}
+
+class _MicPulseButtonState extends State<_MicPulseButton> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1000),
+      vsync: this,
+    );
+    _animation = Tween<double>(begin: 1.0, end: 1.4).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    );
+
+    if (widget.isListening) {
+      _controller.repeat(reverse: true);
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant _MicPulseButton oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isListening && !oldWidget.isListening) {
+      _controller.repeat(reverse: true);
+    } else if (!widget.isListening && oldWidget.isListening) {
+      _controller.stop();
+      _controller.reset();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        return Stack(
+          alignment: Alignment.center,
+          children: [
+            if (widget.isListening)
+              Container(
+                width: 24 * _animation.value,
+                height: 24 * _animation.value,
+                decoration: BoxDecoration(
+                  color: widget.theme.accent.withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                ),
+              ),
+            IconButton(
+              onPressed: widget.onPressed,
+              icon: Icon(
+                widget.isListening ? Icons.mic : Icons.mic_none,
+                color: widget.isListening ? widget.theme.accent : widget.theme.textMuted,
+                size: 20,
+              ),
+              tooltip: widget.isListening ? "Stop Dictation" : "Start Dictation",
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+

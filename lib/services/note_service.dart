@@ -8,6 +8,7 @@ import '../domain/use_cases/search_notes_use_case.dart';
 import '../domain/use_cases/get_backlinks_use_case.dart';
 import '../domain/use_cases/save_note_use_case.dart';
 import 'logger_service.dart';
+import 'note_events.dart';
 
 /// Service responsible for managing notes in the application.
 ///
@@ -37,6 +38,7 @@ class NoteService extends ChangeNotifier {
   String _searchQuery = "";
   List<Note> _templates = [];
   final Set<String> _autoSaveEnabledPaths = {};
+  final List<NoteObserver> _observers = [];
 
   /// The root directory path where notes are stored.
   String? get notesPath => _notesPath;
@@ -58,6 +60,16 @@ class NoteService extends ChangeNotifier {
 
   /// Whether notes are currently being loaded from disk.
   bool get isLoading => _isLoading;
+
+  /// Adds an observer to receive note-related events.
+  void addObserver(NoteObserver observer) {
+    _observers.add(observer);
+  }
+
+  /// Removes a previously added observer.
+  void removeObserver(NoteObserver observer) {
+    _observers.remove(observer);
+  }
 
   /// Map of all tags to their associated notes.
   Map<String, List<Note>> get allTags => _allTags;
@@ -305,6 +317,9 @@ class NoteService extends ChangeNotifier {
   /// Notifies listeners to update the UI.
   void selectNote(Note note) {
     _selectedNote = note;
+    for (var observer in _observers) {
+      observer.onNoteOpened(note);
+    }
     notifyListeners();
   }
 
@@ -325,6 +340,9 @@ class NoteService extends ChangeNotifier {
     
     try {
       final newNote = _notes.firstWhere((n) => n.path == path);
+      for (var observer in _observers) {
+        observer.onNoteCreated(newNote);
+      }
       selectNote(newNote);
     } catch (_) {}
   }
@@ -404,6 +422,9 @@ class NoteService extends ChangeNotifier {
   Future<void> deleteNote(Note note) async {
     try {
       await repository.deleteNote(note.path);
+      for (var observer in _observers) {
+        observer.onNoteDeleted(note);
+      }
       if (_selectedNote?.path == note.path) {
         _selectedNote = null;
       }
@@ -433,7 +454,12 @@ class NoteService extends ChangeNotifier {
     if (selected == null) return;
     if (!_autoSaveEnabledPaths.contains(selected.path)) return;
 
-    final updatedNote = await saveNoteUseCase(note: selected, newContent: newContent);
+    String contentToSave = newContent;
+    for (var observer in _observers) {
+      contentToSave = observer.preprocessContent(contentToSave);
+    }
+
+    final updatedNote = await saveNoteUseCase(note: selected, newContent: contentToSave);
     
     final index = _notes.indexWhere((n) => n.path == selected.path);
     if (index != -1) {
@@ -443,6 +469,9 @@ class NoteService extends ChangeNotifier {
         _selectedNote = updatedNote;
       }
       _buildTags();
+      for (var observer in _observers) {
+        observer.onNoteSaved(updatedNote, contentToSave);
+      }
       notifyListeners();
     }
   }
@@ -451,7 +480,12 @@ class NoteService extends ChangeNotifier {
     final selected = _selectedNote;
     if (selected == null) return;
     
-    final updatedNote = await saveNoteUseCase(note: selected, newContent: content);
+    String contentToSave = content;
+    for (var observer in _observers) {
+      contentToSave = observer.preprocessContent(contentToSave);
+    }
+
+    final updatedNote = await saveNoteUseCase(note: selected, newContent: contentToSave);
     _autoSaveEnabledPaths.add(selected.path);
     
     await refreshNotes();
@@ -460,6 +494,9 @@ class NoteService extends ChangeNotifier {
     final latestNote = _notes.firstWhere((n) => n.path == updatedNote.path, orElse: () => updatedNote);
     if (_selectedNote?.path == selected.path) {
       selectNote(latestNote);
+    }
+    for (var observer in _observers) {
+      observer.onNoteSaved(latestNote, contentToSave);
     }
     notifyListeners();
   }

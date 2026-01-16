@@ -8,6 +8,7 @@ import '../services/theme_service.dart';
 import '../screens/graph_view_screen.dart';
 import '../screens/deploy_screen.dart';
 import '../screens/settings_screen.dart';
+import '../plugins/plugin_manager.dart';
 
 class CommandAction {
   final String label;
@@ -41,6 +42,7 @@ class _CommandPaletteState extends State<CommandPalette> {
 
   Future<void> _loadActions(String query) async {
     final noteService = Provider.of<NoteService>(context, listen: false);
+    final pluginManager = Provider.of<PluginManager>(context, listen: false);
 
     final actions = widget.actions;
     if (actions != null) {
@@ -65,6 +67,15 @@ class _CommandPaletteState extends State<CommandPalette> {
       CommandAction(label: "Deploy / Sync", icon: Icons.cloud_upload, onAction: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DeployScreen()))),
       CommandAction(label: "Settings", icon: Icons.settings, onAction: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()))),
     ];
+
+    // Add plugin commands
+    for (final command in pluginManager.allCommands) {
+      staticCommands.add(CommandAction(
+        label: "Plugin: ${command.label}",
+        icon: command.icon,
+        onAction: command.onExecute,
+      ));
+    }
 
     final scoredStatic = staticCommands
         .map((c) => MapEntry(c, noteService.fuzzyScore(query, c.label)))

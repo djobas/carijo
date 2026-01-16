@@ -3,6 +3,7 @@ import '../domain/models/note.dart';
 import '../services/note_service.dart';
 import '../services/error_handler.dart';
 import '../services/logger_service.dart';
+import '../services/note_events.dart';
 import 'plugin_interface.dart';
 
 /// Concrete implementation of PluginContext that bridges plugins to app services.
@@ -101,7 +102,7 @@ class AppPluginContext implements PluginContext {
 /// await manager.registerPlugin(WordCountPlugin());
 /// await manager.initializeAll();
 /// ```
-class PluginManager extends ChangeNotifier {
+class PluginManager extends ChangeNotifier implements NoteObserver {
   final List<CarijoPlugin> _plugins = [];
   final Map<String, bool> _enabledState = {};
   late final AppPluginContext _context;

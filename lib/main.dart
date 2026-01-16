@@ -11,6 +11,7 @@ import 'widgets/command_palette.dart';
 import 'widgets/error_snackbar.dart';
 import 'services/note_service.dart';
 import 'services/theme_service.dart';
+import 'services/speech_service.dart';
 import 'data/repositories/file_note_repository.dart';
 import 'domain/use_cases/search_notes_use_case.dart';
 import 'domain/use_cases/get_backlinks_use_case.dart';
@@ -21,6 +22,8 @@ import 'data/repositories/shell_git_repository.dart';
 import 'data/repositories/indexed_note_repository.dart';
 import 'data/services/isar_database.dart';
 import 'domain/use_cases/sync_notes_use_case.dart';
+import 'plugins/plugin_manager.dart';
+import 'plugins/builtin_plugins.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -45,21 +48,39 @@ void main() async {
   );
   await supabaseService.initialize();
 
+  final noteService = NoteService(
+    repository: noteRepository,
+    searchUseCase: SearchNotesUseCase(),
+    getBacklinksUseCase: GetBacklinksUseCase(),
+    saveNoteUseCase: SaveNoteUseCase(noteRepository),
+  );
+
+  final errorHandler = ErrorHandler();
+
+  final pluginManager = PluginManager(
+    noteService: noteService,
+    errorHandler: errorHandler,
+  );
+
+  // Register and initialize builtin plugins
+  for (final plugin in BuiltinPlugins.all) {
+    pluginManager.registerPlugin(plugin);
+  }
+  await pluginManager.initializeAll();
+
+  // Link plugin manager as observer to note service
+  noteService.addObserver(pluginManager);
+
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(
-          create: (_) => NoteService(
-            repository: noteRepository,
-            searchUseCase: SearchNotesUseCase(),
-            getBacklinksUseCase: GetBacklinksUseCase(),
-            saveNoteUseCase: SaveNoteUseCase(noteRepository),
-          ),
-        ),
+        ChangeNotifierProvider.value(value: noteService),
         ChangeNotifierProvider(create: (_) => GitService(gitRepository)),
         ChangeNotifierProvider.value(value: supabaseService),
-        ChangeNotifierProvider(create: (_) => ThemeService()),
-        ChangeNotifierProvider(create: (_) => ErrorHandler()),
+        ChangeNotifierProvider.value(value: themeService),
+        ChangeNotifierProvider.value(value: errorHandler),
+        ChangeNotifierProvider.value(value: pluginManager),
+        ChangeNotifierProvider(create: (_) => SpeechService()),
       ],
       child: const CarijoApp(),
     ),
