@@ -63,7 +63,7 @@ void main() async {
 
   final supabaseRepository = SupabaseNoteRepository();
   final gitRepository = ShellGitRepository();
-  final syncUseCase = SyncNotesUseCase(supabaseRepository);
+  final syncUseCase = SyncNotesUseCase(supabaseRepository, noteRepository);
 
   final supabaseService = SupabaseService(
     repository: supabaseRepository,

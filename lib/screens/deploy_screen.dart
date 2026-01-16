@@ -315,9 +315,9 @@ class _DeployScreenState extends State<DeployScreen> {
                                 : () async {
                                     final messenger = ScaffoldMessenger.of(context);
                                     try {
-                                      await supabaseService.syncAll(noteService.notes);
+                                      await noteService.syncWithSupabase(supabaseService);
                                       messenger.showSnackBar(
-                                        const SnackBar(content: Text("Blog Sync Successful"))
+                                        const SnackBar(content: Text("Cloud Sync Successful (Bidirectional)"))
                                       );
                                     } catch (e) {
                                       messenger.showSnackBar(

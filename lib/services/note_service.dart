@@ -500,4 +500,12 @@ class NoteService extends ChangeNotifier {
     }
     notifyListeners();
   }
+
+  Future<void> syncWithSupabase(dynamic supabaseService) async {
+    final path = _notesPath;
+    if (path == null) return;
+
+    await supabaseService.syncAll(_notes, path);
+    await refreshNotes();
+  }
 }

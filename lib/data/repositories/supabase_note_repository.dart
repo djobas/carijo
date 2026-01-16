@@ -10,7 +10,7 @@ class SupabaseNoteRepository implements RemoteNoteRepository {
     await client.from('notes').upsert({
       'title': note.title,
       'content': note.content,
-      'path': note.path,
+      'path': note.path, // This should be the relative path
       'modified_at': note.modified.toIso8601String(),
       'tags': note.tags,
       'metadata': note.metadata,
@@ -27,7 +27,7 @@ class SupabaseNoteRepository implements RemoteNoteRepository {
     final List<Map<String, dynamic>> data = notes.map((note) => {
       'title': note.title,
       'content': note.content,
-      'path': note.path,
+      'path': note.path, // This should be relative
       'modified_at': note.modified.toIso8601String(),
       'tags': note.tags,
       'metadata': note.metadata,
@@ -37,5 +37,23 @@ class SupabaseNoteRepository implements RemoteNoteRepository {
     }).toList();
 
     await client.from('notes').upsert(data, onConflict: 'path');
+  }
+
+  @override
+  Future<List<Note>> fetchAllNotes() async {
+    final client = Supabase.instance.client;
+    final response = await client.from('notes').select();
+    
+    return (response as List).map((data) => Note(
+      title: data['title'] ?? '',
+      content: data['content'] ?? '',
+      path: data['path'] ?? '', // This will be relative path from DB
+      modified: DateTime.parse(data['modified_at'] ?? DateTime.now().toIso8601String()),
+      tags: List<String>.from(data['tags'] ?? []),
+      metadata: Map<String, dynamic>.from(data['metadata'] ?? {}),
+      isPublished: data['is_published'] ?? false,
+      category: data['category'],
+      slug: data['slug'],
+    )).toList();
   }
 }

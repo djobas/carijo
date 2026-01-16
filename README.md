@@ -24,8 +24,9 @@
 ### ⚡ Produtividade
 - **Quick Capture** (`Ctrl+N`) — captura instantânea de ideias
 - **Command Palette** (`Ctrl+K`) — navegação e comandos rápidos
+- **IA Speech-to-Text** — Transcreva notas de voz usando **OpenAI Whisper** ou **Google Gemini**
 - **Auto-Save** — salvamento automático com debounce
-- **Fuzzy Search** — busca inteligente em todas as notas
+- **Fuzzy Search** — busca inteligente em todas as notas (incluindo busca profunda indexada)
 
 ### 🔗 Graph View
 - **Visualização de Grafo** — veja suas notas como uma rede interconectada
@@ -44,9 +45,9 @@
 | **Monokai Pro** | Amarelo vibrante |
 
 ### 🚀 Sincronização & Deploy
-- **Git Integration** — staging area visual, commits e push direto para seu blog
-- **Supabase Sync** — backup e sincronização na nuvem
-- **Sync Wizard** — configuração guiada passo a passo
+- **Git Integration** — staging area visual, commits e push direto para seu blog/repositório
+- **Supabase Sync** — backup e sincronização em tempo real na nuvem
+- **Sync Wizard** — configurador interativo para Git e Supabase, facilitando o setup inicial
 
 ---
 
@@ -84,6 +85,7 @@ lib/
 | **Markdown** | flutter_markdown + flutter_math_fork |
 | **Cloud Sync** | Supabase |
 | **VCS** | Git CLI |
+| **IA/STT** | OpenAI API & Google Generative AI (Gemini) |
 | **Tipografia** | Google Fonts (JetBrains Mono & Space Grotesk) |
 
 ---
@@ -135,13 +137,16 @@ flutter run -d windows
 
 ---
 
-## 🗺️ Roadmap
+## 🗺️ Roadmap para Aplicativo funcional (Uso Pessoal)
 
-- [ ] Suporte a PDF/HTML export
-- [ ] Plugins e extensões
-- [ ] Suporte macOS/Linux
-- [ ] Modo colaborativo
-- [ ] Mobile (iOS/Android)
+- [ ] **Exportação Avançada**: Suporte a PDF e HTML para compartilhamento.
+- [ ] **Backups Automáticos**: Sistema de backup local em ZIP para segurança extra.
+- [ ] **Busca Global Profunda**: Visualização de trechos de conteúdo em todos os arquivos nota.
+- [ ] **Gerenciamento de Vault**: Ferramentas para renomear pastas e tags em massa (refactoring).
+- [ ] **Segurança**: Bloqueio opcional por PIN ou Biometria.
+- [ ] **Companion Mobile**: App básico em Flutter compartilhando o backend Supabase.
+- [x] Plugins e extensões (Sistema base implementado)
+- [ ] Suporte macOS/Linux (Testes de compatibilidade)
 
 ---
 

@@ -37,16 +37,14 @@ class SupabaseService extends ChangeNotifier {
   void _setupSyncQueue() {
     syncQueue.onExecute = (operation) async {
       final note = Note(
-        title: operation.noteId.split(RegExp(r'[/\\]')).last, // Minimalist note for sync
+        title: operation.noteId.split(RegExp(r'[/\\]')).last, 
         content: operation.content ?? '',
-        path: operation.noteId,
+        path: operation.noteId, // operation.noteId is already relative from enqueue
         modified: DateTime.now(),
       );
 
       if (operation.type == SyncOperationType.publish) {
         await syncUseCase.publishSingle(note);
-      } else if (operation.type == SyncOperationType.delete) {
-        // Implement remote delete if needed
       }
     };
   }
@@ -82,7 +80,7 @@ class SupabaseService extends ChangeNotifier {
     await initialize();
   }
 
-  Future<void> publishNote(Note note) async {
+  Future<void> publishNote(Note note, String basePath) async {
     if (!_initialized) throw Exception("Supabase not initialized");
     
     _isSyncing = true;
@@ -90,22 +88,26 @@ class SupabaseService extends ChangeNotifier {
     notifyListeners();
 
     try {
+      final relativePath = p.relative(note.path, from: basePath);
+      final noteToSync = note.copyWith(path: relativePath);
+
       if (syncQueue.pendingCount > 0) {
         // Queue has priority, add this to queue
-        await syncQueue.enqueue(SyncOperationType.publish, note);
+        await syncQueue.enqueue(SyncOperationType.publish, noteToSync);
       } else {
-        await syncUseCase.publishSingle(note);
+        await syncUseCase.publishSingle(noteToSync);
       }
     } catch (e) {
       LoggerService.warning('Direct publish failed, enqueuing for background sync: $e');
-      await syncQueue.enqueue(SyncOperationType.publish, note);
+      final relativePath = p.relative(note.path, from: basePath);
+      await syncQueue.enqueue(SyncOperationType.publish, note.copyWith(path: relativePath));
     } finally {
       _isSyncing = false;
       notifyListeners();
     }
   }
 
-  Future<void> syncAll(List<Note> notes) async {
+  Future<void> syncAll(List<Note> notes, String basePath) async {
     if (!_initialized) throw Exception("Supabase not initialized");
 
     _isSyncing = true;
@@ -113,7 +115,7 @@ class SupabaseService extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await syncUseCase(notes);
+      await syncUseCase(notes, basePath);
     } catch (e) {
       _lastError = e.toString();
       rethrow;
