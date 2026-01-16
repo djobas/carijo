@@ -3,5 +3,5 @@ class GitFile {
   final bool isStaged;
   final String status; // 'modified', 'added', 'deleted'
 
-  GitFile({required this.path, required this.isStaged, required this.status});
+  const GitFile({required this.path, required this.isStaged, required this.status});
 }

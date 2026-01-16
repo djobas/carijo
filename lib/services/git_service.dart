@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 export '../domain/models/git_file.dart';
 import '../domain/models/git_file.dart';
 import '../domain/repositories/git_repository.dart';
+import 'logger_service.dart';
 
 class GitService extends ChangeNotifier {
   final GitRepository repository;
@@ -30,10 +31,10 @@ class GitService extends ChangeNotifier {
       // 3. Push
       await repository.push(workingDir);
       
-      debugPrint("Git Push executed successfully");
+      LoggerService.info("Git Push executed successfully");
     } catch (e) {
       _lastError = e.toString();
-      debugPrint("Git Push error: $e");
+      LoggerService.error("Git Push failed", error: e);
     } finally {
       _isSyncing = false;
       notifyListeners();
@@ -44,7 +45,7 @@ class GitService extends ChangeNotifier {
     try {
       return await repository.getStatus(workingDir);
     } catch (e) {
-      debugPrint("Git Status error: $e");
+      LoggerService.error("Git Status failed", error: e);
       return [];
     }
   }
@@ -58,7 +59,7 @@ class GitService extends ChangeNotifier {
       }
       notifyListeners();
     } catch (e) {
-      debugPrint("Git Staging error: $e");
+      LoggerService.error("Git Staging failed", error: e);
     }
   }
 
@@ -66,7 +67,7 @@ class GitService extends ChangeNotifier {
     try {
       return await repository.getDiff(path, workingDir);
     } catch (e) {
-      debugPrint("Git Diff error: $e");
+      LoggerService.error("Git Diff failed", error: e);
       return "Error fetching diff: $e";
     }
   }

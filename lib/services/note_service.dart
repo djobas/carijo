@@ -7,6 +7,7 @@ import '../domain/repositories/note_repository.dart';
 import '../domain/use_cases/search_notes_use_case.dart';
 import '../domain/use_cases/get_backlinks_use_case.dart';
 import '../domain/use_cases/save_note_use_case.dart';
+import 'logger_service.dart';
 
 class NoteService extends ChangeNotifier {
   final NoteRepository repository;
@@ -95,7 +96,7 @@ class NoteService extends ChangeNotifier {
       _notes = loadedNotes;
       _buildFolderTree();
     } catch (e) {
-      debugPrint("Error loading notes: $e");
+      LoggerService.error("Failed to load notes", error: e);
     }
 
     _isLoading = false;
@@ -313,7 +314,7 @@ class NoteService extends ChangeNotifier {
       final note = _notes.firstWhere((n) => n.path.endsWith(filename));
       selectNote(note);
     } catch (e) {
-      debugPrint("Error opening daily note: $e");
+      LoggerService.error("Failed to open daily note", error: e);
     }
   }
 
@@ -332,7 +333,7 @@ class NoteService extends ChangeNotifier {
       }
       await refreshNotes();
     } catch (e) {
-      debugPrint("Error deleting note: $e");
+      LoggerService.error("Failed to delete note", error: e);
     }
   }
 

@@ -3,9 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'services/supabase_service.dart';
 import 'services/git_service.dart';
+import 'services/logger_service.dart';
+import 'services/error_handler.dart';
 import 'screens/home_screen.dart';
 import 'components/quick_capture.dart';
 import 'widgets/command_palette.dart';
+import 'widgets/error_snackbar.dart';
 import 'services/note_service.dart';
 import 'services/theme_service.dart';
 import 'data/repositories/file_note_repository.dart';
@@ -21,6 +24,10 @@ import 'domain/use_cases/sync_notes_use_case.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize logging first
+  await LoggerService().initialize();
+  LoggerService.info('Carijó Notes starting...');
   
   final isarDb = IsarDatabase();
   await isarDb.initialize();
@@ -52,6 +59,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => GitService(gitRepository)),
         ChangeNotifierProvider.value(value: supabaseService),
         ChangeNotifierProvider(create: (_) => ThemeService()),
+        ChangeNotifierProvider(create: (_) => ErrorHandler()),
       ],
       child: const CarijoApp(),
     ),
@@ -108,7 +116,7 @@ class CarijoApp extends StatelessWidget {
           ),
         );
       },
-      home: HomeScreen(),
+      home: const ErrorSnackbarListener(child: HomeScreen()),
     );
   }
 }
