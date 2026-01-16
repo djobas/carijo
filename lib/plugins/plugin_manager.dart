@@ -226,7 +226,8 @@ class PluginManager extends ChangeNotifier implements NoteObserver {
   List<PluginMenuItem> getMenuItems(String location) => _context.getMenuItems(location);
 
   /// Notifies all enabled plugins that a note was opened.
-  void notifyNoteOpened(Note note) {
+  @override
+  void onNoteOpened(Note note) {
     for (final plugin in enabledPlugins) {
       try {
         plugin.onNoteOpened(note);
@@ -237,7 +238,8 @@ class PluginManager extends ChangeNotifier implements NoteObserver {
   }
 
   /// Notifies all enabled plugins that a note was saved.
-  void notifyNoteSaved(Note note, String content) {
+  @override
+  void onNoteSaved(Note note, String content) {
     for (final plugin in enabledPlugins) {
       try {
         plugin.onNoteSaved(note, content);
@@ -248,7 +250,8 @@ class PluginManager extends ChangeNotifier implements NoteObserver {
   }
 
   /// Notifies all enabled plugins that a note was created.
-  void notifyNoteCreated(Note note) {
+  @override
+  void onNoteCreated(Note note) {
     for (final plugin in enabledPlugins) {
       try {
         plugin.onNoteCreated(note);
@@ -259,7 +262,8 @@ class PluginManager extends ChangeNotifier implements NoteObserver {
   }
 
   /// Notifies all enabled plugins that a note was deleted.
-  void notifyNoteDeleted(Note note) {
+  @override
+  void onNoteDeleted(Note note) {
     for (final plugin in enabledPlugins) {
       try {
         plugin.onNoteDeleted(note);
@@ -270,6 +274,7 @@ class PluginManager extends ChangeNotifier implements NoteObserver {
   }
 
   /// Processes content through all enabled plugins.
+  @override
   String processContent(String content) {
     String processed = content;
     for (final plugin in enabledPlugins) {
@@ -283,6 +288,7 @@ class PluginManager extends ChangeNotifier implements NoteObserver {
   }
 
   /// Preprocesses content through all enabled plugins before saving.
+  @override
   String preprocessContent(String content) {
     String processed = content;
     for (final plugin in enabledPlugins) {

@@ -550,6 +550,29 @@ class _HomeScreenState extends State<HomeScreen> {
       },
     );
   }
+  void _insertTextAtCursor(String text) {
+    if (text.isEmpty) return;
+    
+    final currentText = _editorController.text;
+    final selection = _editorController.selection;
+    
+    String newText;
+    int newOffset;
+
+    if (selection.start != -1) {
+      newText = currentText.replaceRange(selection.start, selection.end, text);
+      newOffset = selection.start + text.length;
+    } else {
+      newText = currentText + text;
+      newOffset = newText.length;
+    }
+
+    _editorController.text = newText;
+    _editorController.selection = TextSelection.collapsed(offset: newOffset);
+    
+    // Notify NoteService
+    Provider.of<NoteService>(context, listen: false).updateCurrentNote(newText);
+  }
 }
 
 class _MicPulseButton extends StatefulWidget {

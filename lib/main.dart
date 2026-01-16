@@ -56,6 +56,7 @@ void main() async {
   );
 
   final errorHandler = ErrorHandler();
+  final themeService = ThemeService();
 
   final pluginManager = PluginManager(
     noteService: noteService,
