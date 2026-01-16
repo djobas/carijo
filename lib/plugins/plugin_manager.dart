@@ -22,6 +22,9 @@ class AppPluginContext implements PluginContext {
   Note? get currentNote => _noteService.selectedNote;
 
   @override
+  String get notesPath => _noteService.notesPath;
+
+  @override
   List<Note> get allNotes => _noteService.notes;
 
   @override

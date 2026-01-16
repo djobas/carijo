@@ -52,6 +52,9 @@ abstract class PluginContext {
   /// The currently selected note, if any.
   Note? get currentNote;
 
+  /// The base path where notes are stored.
+  String get notesPath;
+
   /// All available notes.
   List<Note> get allNotes;
 

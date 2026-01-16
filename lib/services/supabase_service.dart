@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'logger_service.dart';
 import '../domain/models/note.dart';
 import '../domain/repositories/remote_note_repository.dart';
 import '../domain/use_cases/sync_notes_use_case.dart';
