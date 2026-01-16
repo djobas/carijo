@@ -129,7 +129,6 @@ class _HomeScreenState extends State<HomeScreen> {
                         searchController: _searchController,
                       ),
                     ),
-                    ),
                     const TagsSidebar(),
                   ],
                 ),
@@ -203,8 +202,11 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
         ),
-      ),
-    );
+      ],
+    ),
+  ),
+),
+);
   }
 
   Widget _buildTopToolbar(BuildContext context, NoteService noteService, theme) {
