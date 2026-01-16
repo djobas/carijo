@@ -19,6 +19,9 @@ import 'settings_screen.dart';
 import '../widgets/theme_picker.dart';
 import '../widgets/sync_wizard.dart';
 import '../services/speech_service.dart';
+import '../widgets/window_title_bar.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'dart:ui';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -104,8 +107,13 @@ class _HomeScreenState extends State<HomeScreen> {
         autofocus: true,
         child: Scaffold(
           backgroundColor: theme.bgMain,
-          body: Row(
+          body: Column(
             children: [
+              if (Platform.isWindows || Platform.isLinux || Platform.isMacOS)
+                const WindowTitleBar(),
+              Expanded(
+                child: Row(
+                  children: [
               // 1. Sidebar (Folders, Search, Tags)
               SizedBox(
                 width: 280,
@@ -121,10 +129,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         searchController: _searchController,
                       ),
                     ),
+                    ),
                     const TagsSidebar(),
                   ],
                 ),
-              ),
+              ).animate().fadeIn(duration: 400.ms).slideX(begin: -0.1, end: 0),
 
               // 2. Main Editor Area
               Expanded(

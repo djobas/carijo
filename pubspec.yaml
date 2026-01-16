@@ -44,6 +44,11 @@ dependencies:
   # Google Generative AI (Gemini)
   google_generative_ai: ^0.4.5
 
+  # Window Management
+  window_manager: ^0.4.3
+  # Animations
+  flutter_animate: ^4.5.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

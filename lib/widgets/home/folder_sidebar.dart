@@ -5,6 +5,8 @@ import '../../services/note_service.dart';
 import '../../services/theme_service.dart';
 import '../../screens/settings_screen.dart';
 import '../../screens/graph_view_screen.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'dart:ui';
 
 class FolderSidebar extends StatefulWidget {
   final VoidCallback onNewNote;
@@ -40,11 +42,14 @@ class _FolderSidebarState extends State<FolderSidebar> {
     return Container(
       width: 280,
       decoration: BoxDecoration(
-        color: bgSidebar,
+        color: bgSidebar.withValues(alpha: 0.8),
         border: Border(right: BorderSide(color: borderColor)),
       ),
-      child: Column(
-        children: [
+      child: ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Column(
+            children: [
           Padding(
             padding: const EdgeInsets.all(24.0),
             child: Row(
@@ -176,7 +181,9 @@ class _FolderSidebarState extends State<FolderSidebar> {
               ],
             ),
           )
-        ],
+            ],
+          ),
+        ),
       ),
     );
   }
