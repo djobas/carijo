@@ -9,6 +9,18 @@ import '../domain/use_cases/get_backlinks_use_case.dart';
 import '../domain/use_cases/save_note_use_case.dart';
 import 'logger_service.dart';
 
+/// Service responsible for managing notes in the application.
+///
+/// Provides CRUD operations, search, filtering, templating, and folder
+/// organization for markdown notes. Uses [ChangeNotifier] to notify
+/// listeners of state changes.
+///
+/// Example usage:
+/// ```dart
+/// final noteService = Provider.of<NoteService>(context);
+/// await noteService.createNewNote(title: 'My Note');
+/// noteService.selectNote(noteService.notes.first);
+/// ```
 class NoteService extends ChangeNotifier {
   final NoteRepository repository;
   final SearchNotesUseCase searchUseCase;
@@ -26,9 +38,13 @@ class NoteService extends ChangeNotifier {
   List<Note> _templates = [];
   final Set<String> _autoSaveEnabledPaths = {};
 
+  /// The root directory path where notes are stored.
   String? get notesPath => _notesPath;
+
+  /// The hierarchical folder structure of all notes.
   NoteFolder? get rootFolder => _rootFolder;
   
+  /// Returns filtered and searched notes based on current query and tag filter.
   List<Note> get notes {
     return searchUseCase(
       notes: _notes,
@@ -37,13 +53,28 @@ class NoteService extends ChangeNotifier {
     );
   }
 
+  /// The currently selected note in the editor.
   Note? get selectedNote => _selectedNote;
+
+  /// Whether notes are currently being loaded from disk.
   bool get isLoading => _isLoading;
+
+  /// Map of all tags to their associated notes.
   Map<String, List<Note>> get allTags => _allTags;
+
+  /// The currently active tag filter, or null if no filter is applied.
   String? get filterTag => _filterTag;
+
+  /// The current search query string.
   String get searchQuery => _searchQuery;
+
+  /// List of available note templates from the _templates folder.
   List<Note> get templates => _templates;
 
+  /// Creates a NoteService with required use cases and repository.
+  ///
+  /// Automatically initializes by loading the notes path from preferences
+  /// and refreshing the notes list.
   NoteService({
     required this.repository,
     required this.searchUseCase,
@@ -53,13 +84,23 @@ class NoteService extends ChangeNotifier {
     _init();
   }
 
+  /// Checks if auto-save is enabled for a note at the given [path].
+  ///
+  /// Auto-save is enabled after the first manual save of a note.
   bool isAutoSaveEnabled(String path) => _autoSaveEnabledPaths.contains(path);
 
+  /// Updates the current search query and triggers a UI refresh.
+  ///
+  /// The [query] is used to filter notes by title and content.
   void updateSearchQuery(String query) {
     _searchQuery = query;
     notifyListeners();
   }
 
+  /// Toggles the tag filter on or off.
+  ///
+  /// If [tag] matches the current filter, it is cleared. Otherwise,
+  /// the filter is set to the new tag.
   void toggleTagFilter(String? tag) {
     _filterTag = (_filterTag == tag) ? null : tag;
     notifyListeners();
@@ -76,6 +117,9 @@ class NoteService extends ChangeNotifier {
     }
   }
 
+  /// Sets the root directory path for notes and refreshes the notes list.
+  ///
+  /// Persists the [path] to SharedPreferences for future sessions.
   Future<void> setNotesPath(String path) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('notes_path', path);
@@ -83,6 +127,10 @@ class NoteService extends ChangeNotifier {
     await refreshNotes();
   }
 
+  /// Reloads all notes from the filesystem.
+  ///
+  /// Rebuilds the folder tree, tag index, and template list.
+  /// Notifies listeners when complete.
   Future<void> refreshNotes() async {
     try {
       final path = _notesPath;
@@ -176,10 +224,18 @@ class NoteService extends ChangeNotifier {
     }
   }
 
+  /// Finds all notes that link to the given [note].
+  ///
+  /// Returns a list of [BacklinkMatch] containing the linking note
+  /// and the line snippet where the link appears.
   List<BacklinkMatch> getBacklinksFor(Note note) {
     return getBacklinksUseCase(targetNote: note, allNotes: _notes);
   }
 
+  /// Calculates a fuzzy match score between [query] and [target].
+  ///
+  /// Returns a score from 0.0 (no match) to 1.0 (exact/prefix match).
+  /// Used internally for ranked search results.
   double fuzzyScore(String query, String target) {
     if (query.isEmpty) return 1.0;
     query = query.toLowerCase();
@@ -212,6 +268,10 @@ class NoteService extends ChangeNotifier {
     return 0.0;
   }
 
+  /// Searches notes by [query] using fuzzy matching.
+  ///
+  /// Returns notes sorted by relevance score (title matches weighted 2x).
+  /// Returns empty list if query is empty.
   List<Note> searchNotes(String query) {
     if (query.isEmpty) return [];
     
@@ -230,6 +290,9 @@ class NoteService extends ChangeNotifier {
     return results.map((e) => e.key).toList();
   }
 
+  /// Searches notes globally using the repository's search.
+  ///
+  /// Unlike [searchNotes], this may use indexed search for better performance.
   Future<List<Note>> searchGlobal(String query) async {
     if (query.isEmpty) return [];
     final path = _notesPath;
@@ -237,11 +300,18 @@ class NoteService extends ChangeNotifier {
     return await repository.searchNotes(query);
   }
 
+  /// Selects a [note] to display in the editor.
+  ///
+  /// Notifies listeners to update the UI.
   void selectNote(Note note) {
     _selectedNote = note;
     notifyListeners();
   }
 
+  /// Creates a new note with optional [title] and [content].
+  ///
+  /// If no title is provided, uses a timestamp-based name.
+  /// Automatically selects the new note after creation.
   Future<void> createNewNote({String? title, String? content}) async {
     if (_notesPath == null) return;
     
@@ -293,6 +363,9 @@ class NoteService extends ChangeNotifier {
     } catch (_) {}
   }
 
+  /// Opens or creates today's daily note.
+  ///
+  /// Daily notes are named with format YYYY-MM-DD.md and include the #daily tag.
   Future<void> openDailyNote() async {
     if (_notesPath == null) return;
 
@@ -325,6 +398,9 @@ class NoteService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Deletes a [note] from the filesystem.
+  ///
+  /// Clears selection if the deleted note was selected.
   Future<void> deleteNote(Note note) async {
     try {
       await repository.deleteNote(note.path);
