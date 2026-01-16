@@ -41,6 +41,8 @@ dependencies:
   http: ^1.2.1
   # Secure Storage for Secrets
   flutter_secure_storage: ^9.2.2
+  # Google Generative AI (Gemini)
+  google_generative_ai: ^0.4.5
 
 dev_dependencies:
   flutter_test:

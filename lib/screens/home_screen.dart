@@ -539,10 +539,9 @@ class _HomeScreenState extends State<HomeScreen> {
           theme: theme,
           onPressed: () async {
             if (speechService.isRecording) {
-              await speechService.stopListening(onResult: (text) {
-                _insertTextAtCursor(text);
-              });
+              await speechService.stopListening();
             } else if (!speechService.isProcessing) {
+
               final ok = await speechService.startListening(onResult: (text) {
                    _insertTextAtCursor(text);
               });

@@ -14,6 +14,7 @@
         "flutter_math_fork",
         "flutter_secure_storage",
         "google_fonts",
+        "google_generative_ai",
         "http",
         "intl",
         "isar",
@@ -785,12 +786,35 @@
       ]
     },
     {
-      "name": "uuid",
-      "version": "4.5.2",
+      "name": "record_macos",
+      "version": "1.1.2",
       "dependencies": [
-        "crypto",
-        "fixnum",
-        "meta"
+        "flutter",
+        "record_platform_interface"
+      ]
+    },
+    {
+      "name": "record_ios",
+      "version": "1.1.5",
+      "dependencies": [
+        "flutter",
+        "record_platform_interface"
+      ]
+    },
+    {
+      "name": "record_android",
+      "version": "1.4.5",
+      "dependencies": [
+        "flutter",
+        "record_platform_interface"
+      ]
+    },
+    {
+      "name": "record_linux",
+      "version": "1.2.1",
+      "dependencies": [
+        "flutter",
+        "record_platform_interface"
       ]
     },
     {
@@ -820,27 +844,12 @@
       ]
     },
     {
-      "name": "record_macos",
-      "version": "1.1.2",
+      "name": "uuid",
+      "version": "4.5.2",
       "dependencies": [
-        "flutter",
-        "record_platform_interface"
-      ]
-    },
-    {
-      "name": "record_linux",
-      "version": "1.2.1",
-      "dependencies": [
-        "flutter",
-        "record_platform_interface"
-      ]
-    },
-    {
-      "name": "record_android",
-      "version": "1.4.5",
-      "dependencies": [
-        "flutter",
-        "record_platform_interface"
+        "crypto",
+        "fixnum",
+        "meta"
       ]
     },
     {
@@ -1474,11 +1483,10 @@
       ]
     },
     {
-      "name": "record_ios",
-      "version": "1.1.5",
+      "name": "google_generative_ai",
+      "version": "0.4.7",
       "dependencies": [
-        "flutter",
-        "record_platform_interface"
+        "http"
       ]
     }
   ],

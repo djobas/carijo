@@ -326,6 +326,12 @@
       "languageVersion": "3.9"
     },
     {
+      "name": "google_generative_ai",
+      "rootUri": "file:///C:/Users/gabri/AppData/Local/Pub/Cache/hosted/pub.dev/google_generative_ai-0.4.7",
+      "packageUri": "lib/",
+      "languageVersion": "3.1"
+    },
+    {
       "name": "gotrue",
       "rootUri": "file:///C:/Users/gabri/AppData/Local/Pub/Cache/hosted/pub.dev/gotrue-2.18.0",
       "packageUri": "lib/",
