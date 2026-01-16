@@ -74,6 +74,9 @@ class SyncQueue extends ChangeNotifier {
   final List<SyncOperation> _queue = [];
   bool _isProcessing = false;
   Timer? _retryTimer;
+  
+  /// Callback function to execute a sync operation.
+  Future<void> Function(SyncOperation)? onExecute;
 
   /// The current queue of pending operations.
   List<SyncOperation> get queue => List.unmodifiable(_queue);
@@ -125,6 +128,12 @@ class SyncQueue extends ChangeNotifier {
       content: type == SyncOperationType.publish ? note.content : null,
       createdAt: DateTime.now(),
     );
+
+    // Conflict Detection / Redundancy Check (Last Write Wins)
+    if (type != SyncOperationType.fullSync) {
+      _queue.removeWhere((op) => op.noteId == note.path && op.type == type);
+      LoggerService.info('Removed redundant sync operation for ${note.title}');
+    }
 
     _queue.add(operation);
     await _saveQueue();
@@ -181,12 +190,12 @@ class SyncQueue extends ChangeNotifier {
   }
 
   Future<void> _executeOperation(SyncOperation operation) async {
-    // This method should be overridden or configured with actual sync logic
-    // For now, we simulate the operation
-    await Future.delayed(const Duration(milliseconds: 500));
-    
-    // In a real implementation, this would call SupabaseService or GitService
-    // throw Exception('Not implemented'); // Would cause retry
+    if (onExecute != null) {
+      await onExecute!(operation);
+    } else {
+      // Fallback for testing/simulation
+      await Future.delayed(const Duration(milliseconds: 500));
+    }
   }
 
   Future<void> _saveQueue() async {

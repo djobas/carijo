@@ -39,6 +39,8 @@ dependencies:
   record: ^5.1.0
   # HTTP for OpenAI API
   http: ^1.2.1
+  # Secure Storage for Secrets
+  flutter_secure_storage: ^9.2.2
 
 dev_dependencies:
   flutter_test:

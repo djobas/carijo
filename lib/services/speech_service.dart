@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:path/path.dart' as p;
 import 'logger_service.dart';
@@ -15,6 +16,7 @@ class SpeechService extends ChangeNotifier {
   SpeechService._internal();
 
   final AudioRecorder _recorder = AudioRecorder();
+  final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
   
   bool _isRecording = false;
   bool _isProcessing = false;
@@ -34,16 +36,14 @@ class SpeechService extends ChangeNotifier {
 
   /// Initializes the service and loads the API key.
   Future<void> initialize() async {
-    final prefs = await SharedPreferences.getInstance();
-    _openAIKey = prefs.getString(_keyOpenAI) ?? '';
+    _openAIKey = await _secureStorage.read(key: _keyOpenAI) ?? '';
     notifyListeners();
   }
 
   /// Sets and persists the OpenAI API key.
   Future<void> setOpenAIKey(String key) async {
     _openAIKey = key;
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyOpenAI, key);
+    await _secureStorage.write(key: _keyOpenAI, value: key);
     notifyListeners();
   }
 

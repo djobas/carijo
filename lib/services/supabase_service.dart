@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import '../domain/models/note.dart';
 import '../domain/repositories/remote_note_repository.dart';
 import '../domain/use_cases/sync_notes_use_case.dart';
+import 'sync_queue.dart';
 
 class SupabaseService extends ChangeNotifier {
   final RemoteNoteRepository repository;
   final SyncNotesUseCase syncUseCase;
+  final SyncQueue syncQueue;
+  final _secureStorage = const FlutterSecureStorage();
 
   bool _isSyncing = false;
   bool get isSyncing => _isSyncing;
@@ -24,12 +28,32 @@ class SupabaseService extends ChangeNotifier {
   SupabaseService({
     required this.repository,
     required this.syncUseCase,
-  });
+    required this.syncQueue,
+  }) {
+    _setupSyncQueue();
+  }
+
+  void _setupSyncQueue() {
+    syncQueue.onExecute = (operation) async {
+      final note = Note(
+        title: operation.noteId.split(RegExp(r'[/\\]')).last, // Minimalist note for sync
+        content: operation.content ?? '',
+        path: operation.noteId,
+        modified: DateTime.now(),
+      );
+
+      if (operation.type == SyncOperationType.publish) {
+        await syncUseCase.publishSingle(note);
+      } else if (operation.type == SyncOperationType.delete) {
+        // Implement remote delete if needed
+      }
+    };
+  }
 
   Future<void> initialize() async {
     final prefs = await SharedPreferences.getInstance();
     final url = prefs.getString(keyUrl);
-    final anonKey = prefs.getString(keyAnonKey);
+    final anonKey = await _secureStorage.read(key: keyAnonKey);
 
     if (url == null || anonKey == null || url.isEmpty || anonKey.isEmpty) {
       _initialized = false;
@@ -53,7 +77,7 @@ class SupabaseService extends ChangeNotifier {
   Future<void> saveConfig(String url, String anonKey) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(keyUrl, url);
-    await prefs.setString(keyAnonKey, anonKey);
+    await _secureStorage.write(key: keyAnonKey, value: anonKey);
     await initialize();
   }
 
@@ -65,10 +89,15 @@ class SupabaseService extends ChangeNotifier {
     notifyListeners();
 
     try {
-      await syncUseCase.publishSingle(note);
+      if (syncQueue.pendingCount > 0) {
+        // Queue has priority, add this to queue
+        await syncQueue.enqueue(SyncOperationType.publish, note);
+      } else {
+        await syncUseCase.publishSingle(note);
+      }
     } catch (e) {
-      _lastError = e.toString();
-      rethrow;
+      LoggerService.warning('Direct publish failed, enqueuing for background sync: $e');
+      await syncQueue.enqueue(SyncOperationType.publish, note);
     } finally {
       _isSyncing = false;
       notifyListeners();

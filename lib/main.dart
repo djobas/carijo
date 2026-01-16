@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'services/supabase_service.dart';
+import 'services/sync_queue.dart';
+import 'services/connectivity_service.dart';
 import 'services/git_service.dart';
 import 'services/logger_service.dart';
 import 'services/error_handler.dart';
@@ -38,6 +40,9 @@ void main() async {
   final fileRepository = FileNoteRepository();
   final noteRepository = IndexedNoteRepository(fileRepository, isarDb);
   
+  final connectivityService = ConnectivityService();
+  final syncQueue = SyncQueue(connectivityService);
+
   final supabaseRepository = SupabaseNoteRepository();
   final gitRepository = ShellGitRepository();
   final syncUseCase = SyncNotesUseCase(supabaseRepository);
@@ -45,6 +50,7 @@ void main() async {
   final supabaseService = SupabaseService(
     repository: supabaseRepository,
     syncUseCase: syncUseCase,
+    syncQueue: syncQueue,
   );
   await supabaseService.initialize();
 
@@ -76,6 +82,8 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider.value(value: noteService),
+        ChangeNotifierProvider.value(value: connectivityService),
+        ChangeNotifierProvider.value(value: syncQueue),
         ChangeNotifierProvider(create: (_) => GitService(gitRepository)),
         ChangeNotifierProvider.value(value: supabaseService),
         ChangeNotifierProvider.value(value: themeService),
