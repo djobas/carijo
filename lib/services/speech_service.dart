@@ -189,7 +189,7 @@ class SpeechService extends ChangeNotifier {
   Future<String> _transcribeWithGemini(String audioPath) async {
     try {
       final model = GenerativeModel(
-        model: 'gemini-1.5-flash',
+        model: 'gemini-1.5-flash-latest',
         apiKey: _geminiKey,
       );
 
@@ -204,9 +204,14 @@ class SpeechService extends ChangeNotifier {
       ];
 
       final response = await model.generateContent(content);
-      return response.text ?? '';
+      final text = response.text ?? '';
+      if (text.isEmpty) {
+        LoggerService.warning('Gemini returned empty text for transcription');
+      }
+      return text;
     } catch (e) {
-      LoggerService.error('Gemini Transcription Error', error: e);
+      LoggerService.error('Gemini Transcription Error: $e');
+      _lastError = 'Gemini Error: $e';
       rethrow;
     }
   }

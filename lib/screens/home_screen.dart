@@ -549,10 +549,9 @@ class _HomeScreenState extends State<HomeScreen> {
           isListening: isListening,
           theme: theme,
           onPressed: () async {
-              final ok = await speechService.startListening(onResult: (text) {
-                   _insertTextAtCursor(text);
-              });
-              if (!ok && speechService.lastError.isNotEmpty) {
+            if (speechService.isRecording) {
+              final result = await speechService.stopListening();
+              if (result.isEmpty && speechService.lastError.isNotEmpty) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -563,10 +562,12 @@ class _HomeScreenState extends State<HomeScreen> {
                 }
               }
             } else if (speechService.isProcessing) {
-               // Optional: Show "Still processing" toast if user clicks while processing
+              // Already processing, ignore
             } else {
-              final result = await speechService.stopListening();
-              if (result.isEmpty && speechService.lastError.isNotEmpty) {
+              final ok = await speechService.startListening(onResult: (text) {
+                _insertTextAtCursor(text);
+              });
+              if (!ok && speechService.lastError.isNotEmpty) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
