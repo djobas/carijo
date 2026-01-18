@@ -166,7 +166,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 // Supabase Section
                 _buildSectionHeader("CLOUD SYNC (SUPABASE)", theme),
                 const SizedBox(height: 16),
-                _buildSupabaseSection(theme),
+                _buildSupabaseSection(theme, supabaseService),
                 const SizedBox(height: 32),
 
                 // Plugins Section
@@ -386,7 +386,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildSupabaseSection(dynamic theme) {
+  Widget _buildSupabaseSection(dynamic theme, SupabaseService supabaseService) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -450,15 +450,43 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 ),
               ),
-              if (_supabaseTestResult != null) ...[
-                const SizedBox(width: 16),
-                Text(_supabaseTestResult!, style: GoogleFonts.jetBrainsMono(color: theme.textMain, fontSize: 12)),
-              ],
+              const SizedBox(width: 12),
+              ElevatedButton.icon(
+                onPressed: (supabaseService.isSyncing || !supabaseService.isInitialized) 
+                  ? null 
+                  : () async {
+                      final noteService = Provider.of<NoteService>(context, listen: false);
+                      final messenger = ScaffoldMessenger.of(context);
+                      try {
+                        await noteService.syncWithSupabase(supabaseService);
+                        messenger.showSnackBar(
+                          const SnackBar(content: Text("✅ Cloud Sync Successful"))
+                        );
+                      } catch (e) {
+                        messenger.showSnackBar(
+                          SnackBar(content: Text("❌ Sync Error: $e"), backgroundColor: theme.error)
+                        );
+                      }
+                    },
+                icon: supabaseService.isSyncing 
+                  ? SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: theme.bgMain)) 
+                  : const Icon(Icons.sync, size: 16),
+                label: Text(supabaseService.isSyncing ? "Syncing..." : "Sync Now", style: GoogleFonts.spaceGrotesk(fontSize: 12, fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF3ECF8E), // Supabase Green
+                  foregroundColor: theme.bgMain,
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                ),
+              ),
             ],
           ),
+          if (_supabaseTestResult != null) ...[
+            const SizedBox(height: 12),
+            Text(_supabaseTestResult!, style: GoogleFonts.jetBrainsMono(color: theme.textMain, fontSize: 12)),
+          ],
           const SizedBox(height: 16),
           Text(
-            "Create a free project at supabase.com. Copy the URL and anon key from Settings > API.",
+            "Create a free project at supabase.com. Copy the URL and anon key from Settings > API. Sync is bidirectional (local ↔ cloud).",
             style: GoogleFonts.inter(color: theme.textMuted, fontSize: 12, height: 1.5),
           ),
         ],

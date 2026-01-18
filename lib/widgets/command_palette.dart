@@ -9,6 +9,7 @@ import '../screens/graph_view_screen.dart';
 import '../screens/deploy_screen.dart';
 import '../screens/settings_screen.dart';
 import '../plugins/plugin_manager.dart';
+import '../services/supabase_service.dart';
 
 class CommandAction {
   final String label;
@@ -66,6 +67,45 @@ class _CommandPaletteState extends State<CommandPalette> {
       CommandAction(label: "Graph View", icon: Icons.hub, onAction: () => Navigator.push(context, MaterialPageRoute(builder: (_) => GraphViewScreen(notes: noteService.notes)))),
       CommandAction(label: "Deploy / Sync", icon: Icons.cloud_upload, onAction: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const DeployScreen()))),
       CommandAction(label: "Settings", icon: Icons.settings, onAction: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen()))),
+      CommandAction(
+        label: "Cloud Sync: Full Sync", 
+        icon: Icons.sync, 
+        onAction: () async {
+          final supabaseService = Provider.of<SupabaseService>(context, listen: false);
+          if (!supabaseService.isInitialized) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Cloud Sync not configured")));
+            return;
+          }
+          try {
+            await noteService.syncWithSupabase(supabaseService);
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("✅ Cloud Sync Successful")));
+          } catch (e) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("❌ Sync Error: $e")));
+          }
+        }
+      ),
+      CommandAction(
+        label: "Cloud Sync: Push Current Note", 
+        icon: Icons.upload, 
+        onAction: () async {
+          final supabaseService = Provider.of<SupabaseService>(context, listen: false);
+          final selectedNote = noteService.selectedNote;
+          if (selectedNote == null) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("No note selected")));
+            return;
+          }
+          if (!supabaseService.isInitialized) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Cloud Sync not configured")));
+            return;
+          }
+          try {
+            await supabaseService.publishNote(selectedNote, noteService.notesPath!);
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("✅ Note Pushed successfully")));
+          } catch (e) {
+            ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("❌ Push Error: $e")));
+          }
+        }
+      ),
     ];
 
     // Add plugin commands
