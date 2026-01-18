@@ -101,7 +101,7 @@ class SpeechService extends ChangeNotifier {
         final file = File(path);
         if (await file.exists()) await file.delete();
 
-        const config = RecordConfig();
+        const config = RecordConfig(encoder: AudioEncoder.aacLc);
         await _recorder.start(config, path: path);
         _isRecording = true;
         _lastError = '';
@@ -199,7 +199,7 @@ class SpeechService extends ChangeNotifier {
       final content = [
         Content.multi([
           TextPart('Transcreva este áudio exatamente como falado, sem comentários adicionais.'),
-          DataPart('audio/mpeg', bytes),
+          DataPart('audio/mp4', bytes),
         ])
       ];
 

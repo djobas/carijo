@@ -549,20 +549,32 @@ class _HomeScreenState extends State<HomeScreen> {
           isListening: isListening,
           theme: theme,
           onPressed: () async {
-            if (speechService.isRecording) {
-              await speechService.stopListening();
-            } else if (!speechService.isProcessing) {
-
               final ok = await speechService.startListening(onResult: (text) {
                    _insertTextAtCursor(text);
               });
               if (!ok && speechService.lastError.isNotEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text("🎤 Error: ${speechService.lastError}"),
-                    backgroundColor: Colors.redAccent,
-                  ),
-                );
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text("🎤 Error: ${speechService.lastError}"),
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  );
+                }
+              }
+            } else if (speechService.isProcessing) {
+               // Optional: Show "Still processing" toast if user clicks while processing
+            } else {
+              final result = await speechService.stopListening();
+              if (result.isEmpty && speechService.lastError.isNotEmpty) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text("🎤 Error: ${speechService.lastError}"),
+                      backgroundColor: Colors.redAccent,
+                    ),
+                  );
+                }
               }
             }
           },
